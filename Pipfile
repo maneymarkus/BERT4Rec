@@ -4,6 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+absl-py = "*"
+pandas = "*"
+numpy = "*"
+tensorflow = "*"
+wget = "*"
+tqdm = "*"
 
 [dev-packages]
 
