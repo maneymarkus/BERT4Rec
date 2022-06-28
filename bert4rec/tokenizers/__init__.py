@@ -7,7 +7,7 @@ class TokenizerFactory:
         if method == "simple":
             return SimpleTokenizer(**kwargs)
         else:
-            raise ValueError(method)
+            raise ValueError(f"{method} is not known!")
 
 
 tokenizer_factory = TokenizerFactory()
