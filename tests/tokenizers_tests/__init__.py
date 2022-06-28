@@ -1,0 +1,1 @@
+from .simple_tokenizer_tests import SimpleTokenizersTest
