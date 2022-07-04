@@ -33,3 +33,9 @@ def load_reddit(debug: bool = False) -> pd.DataFrame:
         json_file.close()
     df = pd.json_normalize(processed_input)
     return df
+
+
+if __name__ == "__main__":
+    logging.set_verbosity(logging.DEBUG)
+    data = load_reddit(True)
+    print(data)

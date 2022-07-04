@@ -60,3 +60,9 @@ def iterate_directory(df: pd.DataFrame, dir_path: pathlib.Path, is_positive: boo
 def file_get_content(file_path: pathlib.Path) -> typing.AnyStr:
     with open(file_path, "r", encoding="iso-8859-1") as file:
         return file.read()
+
+
+if __name__ == "__main__":
+    logging.set_verbosity(logging.DEBUG)
+    data = load_imdb()
+    print(data)

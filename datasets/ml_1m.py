@@ -117,3 +117,9 @@ def split_dataframe(df: pd.DataFrame, method: str, split_seed: int = None, eval_
         return train, val, test
     else:
         raise NotImplementedError()
+
+
+if __name__ == "__main__":
+    logging.set_verbosity(logging.DEBUG)
+    data = load_ml_1m()
+    print(data)

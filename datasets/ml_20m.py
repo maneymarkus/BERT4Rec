@@ -79,3 +79,9 @@ def filter_users_and_items(df: pd.DataFrame, min_uc: int = 5, min_sc: int = 0) \
         good_items = item_sizes.index[item_sizes >= min_sc]
         df = df[df['sid'].isin(good_items)]
     return df
+
+
+if __name__ == "__main__":
+    logging.set_verbosity(logging.DEBUG)
+    data = load_ml_20m()
+    print(data)
