@@ -43,7 +43,6 @@ def load_imdb() -> pd.DataFrame:
     df = iterate_directory(df, positive_train_dir, True)
     logging.info("Read negative training data into dataframe.")
     df = iterate_directory(df, negative_train_dir, False)
-    print(df)
     return df
 
 
@@ -52,8 +51,8 @@ def iterate_directory(df: pd.DataFrame, dir_path: pathlib.Path, is_positive: boo
         file_path = dir_path.joinpath(filename)
         if os.path.isfile(file_path):
             content = file_get_content(file_path)
-            new_row = {"text": content, "is_positive": 1 if is_positive else 0}
-            df = df.append(new_row, ignore_index=True)
+            new_row_df = pd.DataFrame({"text": content, "is_positive": 1 if is_positive else 0}, index=[0])
+            df = pd.concat([df, new_row_df], ignore_index=True)
     return df
 
 
