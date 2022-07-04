@@ -10,6 +10,8 @@ numpy = "*"
 tensorflow = "*"
 wget = "*"
 tqdm = "*"
+tensorflow-text = "*"
+zstandard = "*"
 
 [dev-packages]
 
