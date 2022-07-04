@@ -30,6 +30,10 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         # entry
         self.vocab = list()
 
+    def clear_vocab(self):
+        self.vocab = list()
+        self.vocab_size = 0
+
     def tokenize(self, input: Union[str, Iterable, pd.Series]) -> Union[int, list[int]]:
         """
         This method tokenizes given input of different supported types and returns a tokenized string, list or

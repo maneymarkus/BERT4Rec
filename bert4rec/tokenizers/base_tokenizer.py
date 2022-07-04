@@ -1,8 +1,5 @@
 import abc
-from collections.abc import Iterable
-import pandas as pd
 import pathlib
-from typing import Union
 
 
 class BaseTokenizer(abc.ABC):
@@ -26,6 +23,10 @@ class BaseTokenizer(abc.ABC):
         self.vocab = None
         if vocab_file_path is not None and vocab_file_path.is_file():
             self.import_vocab_from_file(vocab_file_path)
+
+    @abc.abstractmethod
+    def clear_vocab(self):
+        pass
 
     @abc.abstractmethod
     def tokenize(self, input):
