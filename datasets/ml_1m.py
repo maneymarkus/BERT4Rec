@@ -122,4 +122,9 @@ def split_dataframe(df: pd.DataFrame, method: str, split_seed: int = None, eval_
 if __name__ == "__main__":
     logging.set_verbosity(logging.DEBUG)
     data = load_ml_1m()
+    print("Data Overview:\n")
     print(data)
+    print("\n\nAvailable columns:\n")
+    print(data.columns)
+    print("\n\nAn example row:\n")
+    print(data.iloc[0, :])

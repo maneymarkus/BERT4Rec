@@ -37,7 +37,7 @@ def load_reddit(debug: bool = False) -> pd.DataFrame:
         dctx = zstd.ZstdDecompressor(max_window_size=2147483648)
         stream_reader = dctx.stream_reader(json_file)
         text_stream = io.TextIOWrapper(stream_reader, encoding="utf-8")
-        line_counter = 0
+        line_counter = 1
         for line in text_stream:
             if debug and line_counter > 100000:
                 break
@@ -51,4 +51,9 @@ def load_reddit(debug: bool = False) -> pd.DataFrame:
 if __name__ == "__main__":
     logging.set_verbosity(logging.DEBUG)
     data = load_reddit(True)
+    print("Data Overview:\n")
     print(data)
+    print("\n\nAvailable columns:\n")
+    print(data.columns)
+    print("\n\nAn example row:\n")
+    print(data.iloc[0, :])

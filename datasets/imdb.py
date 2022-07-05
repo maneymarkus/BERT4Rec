@@ -64,4 +64,9 @@ def file_get_content(file_path: pathlib.Path) -> typing.AnyStr:
 if __name__ == "__main__":
     logging.set_verbosity(logging.DEBUG)
     data = load_imdb()
+    print("Data Overview:\n")
     print(data)
+    print("\n\nAvailable columns:\n")
+    print(data.columns)
+    print("\n\nAn example row:\n")
+    print(data.iloc[0, :])
