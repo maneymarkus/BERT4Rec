@@ -5,9 +5,8 @@ from typing import Any, Callable, Optional, Union
 from absl import logging
 import tensorflow as tf
 
-from official.modeling import tf_utils
-from official.nlp.modeling import layers
-
+from bert4rec.model.components import tf_utils
+from bert4rec.model.components import layers
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
 _Activation = Union[str, Callable[..., Any]]
@@ -278,7 +277,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
                 'train this model, the embedding layer will no longer be shared. '
                 'To work around this, load the model outside of the Keras API.')
             print('WARNING: ' + warn_string)
-            logging.warn(warn_string)
+            logging.warning(warn_string)
 
         return cls(**config)
 
@@ -556,6 +555,6 @@ class BertEncoder(tf.keras.Model):
                 'train this model, the embedding layer will no longer be shared. '
                 'To work around this, load the model outside of the Keras API.')
             print('WARNING: ' + warn_string)
-            logging.warn(warn_string)
+            logging.warning(warn_string)
 
         return cls(**config)
