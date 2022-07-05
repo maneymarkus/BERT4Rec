@@ -5,7 +5,7 @@ from typing import Any, Callable, Optional, Union
 from absl import logging
 import tensorflow as tf
 
-from bert4rec.model.components import tf_utils
+from bert4rec.model.components import model_utils
 from bert4rec.model.components import layers
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
@@ -108,20 +108,20 @@ class BertEncoderV2(tf.keras.layers.Layer):
             self._embedding_layer = layers.OnDeviceEmbedding(
                 vocab_size=vocab_size,
                 embedding_width=embedding_width,
-                initializer=tf_utils.clone_initializer(initializer),
+                initializer=model_utils.clone_initializer(initializer),
                 name='word_embeddings')
         else:
             self._embedding_layer = embedding_layer
 
         self._position_embedding_layer = layers.PositionEmbedding(
-            initializer=tf_utils.clone_initializer(initializer),
+            initializer=model_utils.clone_initializer(initializer),
             max_length=max_sequence_length,
             name='position_embedding')
 
         self._type_embedding_layer = layers.OnDeviceEmbedding(
             vocab_size=type_vocab_size,
             embedding_width=embedding_width,
-            initializer=tf_utils.clone_initializer(initializer),
+            initializer=model_utils.clone_initializer(initializer),
             use_one_hot=True,
             name='type_embeddings')
 
@@ -139,7 +139,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
                 '...x,xy->...y',
                 output_shape=hidden_size,
                 bias_axes='y',
-                kernel_initializer=tf_utils.clone_initializer(initializer),
+                kernel_initializer=model_utils.clone_initializer(initializer),
                 name='embedding_projection')
 
         self._transformer_layers = []
@@ -154,14 +154,14 @@ class BertEncoderV2(tf.keras.layers.Layer):
                 attention_dropout=attention_dropout,
                 norm_first=norm_first,
                 output_range=output_range if i == num_layers - 1 else None,
-                kernel_initializer=tf_utils.clone_initializer(initializer),
+                kernel_initializer=model_utils.clone_initializer(initializer),
                 name='transformer/layer_%d' % i)
             self._transformer_layers.append(layer)
 
         self._pooler_layer = tf.keras.layers.Dense(
             units=hidden_size,
             activation='tanh',
-            kernel_initializer=tf_utils.clone_initializer(initializer),
+            kernel_initializer=model_utils.clone_initializer(initializer),
             name='pooler_transform')
 
         self._config = {
@@ -395,7 +395,7 @@ class BertEncoder(tf.keras.Model):
             embedding_layer_inst = layers.OnDeviceEmbedding(
                 vocab_size=vocab_size,
                 embedding_width=embedding_width,
-                initializer=tf_utils.clone_initializer(initializer),
+                initializer=model_utils.clone_initializer(initializer),
                 name='word_embeddings')
         else:
             embedding_layer_inst = embedding_layer
@@ -403,14 +403,14 @@ class BertEncoder(tf.keras.Model):
 
         # Always uses dynamic slicing for simplicity.
         position_embedding_layer = layers.PositionEmbedding(
-            initializer=tf_utils.clone_initializer(initializer),
+            initializer=model_utils.clone_initializer(initializer),
             max_length=max_sequence_length,
             name='position_embedding')
         position_embeddings = position_embedding_layer(word_embeddings)
         type_embedding_layer = layers.OnDeviceEmbedding(
             vocab_size=type_vocab_size,
             embedding_width=embedding_width,
-            initializer=tf_utils.clone_initializer(initializer),
+            initializer=model_utils.clone_initializer(initializer),
             use_one_hot=True,
             name='type_embeddings')
         type_embeddings = type_embedding_layer(type_ids)
@@ -431,7 +431,7 @@ class BertEncoder(tf.keras.Model):
                 '...x,xy->...y',
                 output_shape=hidden_size,
                 bias_axes='y',
-                kernel_initializer=tf_utils.clone_initializer(initializer),
+                kernel_initializer=model_utils.clone_initializer(initializer),
                 name='embedding_projection')
             embeddings = embedding_projection(embeddings)
         else:
@@ -454,7 +454,7 @@ class BertEncoder(tf.keras.Model):
                 attention_dropout=attention_dropout,
                 norm_first=norm_first,
                 output_range=transformer_output_range,
-                kernel_initializer=tf_utils.clone_initializer(initializer),
+                kernel_initializer=model_utils.clone_initializer(initializer),
                 name='transformer/layer_%d' % i)
             transformer_layers.append(layer)
             data = layer([data, attention_mask])
@@ -468,7 +468,7 @@ class BertEncoder(tf.keras.Model):
         pooler_layer = tf.keras.layers.Dense(
             units=hidden_size,
             activation='tanh',
-            kernel_initializer=tf_utils.clone_initializer(initializer),
+            kernel_initializer=model_utils.clone_initializer(initializer),
             name='pooler_transform')
         cls_output = pooler_layer(first_token_tensor)
 

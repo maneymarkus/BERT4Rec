@@ -2,10 +2,9 @@
 # pylint: disable=g-classes-have-attributes
 import math
 from typing import Optional
-
 import tensorflow as tf
 
-from bert4rec.model.components import tf_utils
+from bert4rec.model.components import model_utils
 
 Initializer = tf.keras.initializers.Initializer
 
@@ -139,7 +138,7 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
             raise ValueError("If inputs is None, `length` must be set in "
                              "RelativePositionEmbedding().")
         if inputs is not None:
-            input_shape = tf_utils.get_shape_list(inputs)
+            input_shape = model_utils.get_shape_list(inputs)
             if length is not None and length != input_shape[1]:
                 raise ValueError(
                     "If inputs is not None, `length` must equal to input_shape[1].")
@@ -275,8 +274,8 @@ class RelativePositionBias(tf.keras.layers.Layer):
         Returns:
           A tensor in shape of [batch, heads, query length, key length].
         """
-        batch_size, qlen = tf_utils.get_shape_list(query)[:2]
-        klen = tf_utils.get_shape_list(key)[1]
+        batch_size, qlen = model_utils.get_shape_list(query)[:2]
+        klen = model_utils.get_shape_list(key)[1]
         context_position = tf.range(qlen)[:, None]
         memory_position = tf.range(klen)[None, :]
         relative_position = memory_position - context_position
