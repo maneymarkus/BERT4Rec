@@ -1,35 +1,13 @@
 import numpy as np
 import pandas as pd
 import random
-import string
 import unittest
 
 import bert4rec.tokenizers as tokenizers
+import tests.test_utils as utils
 
 
 class SimpleTokenizersTest(unittest.TestCase):
-    def _generate_unique_word_list(self, min_word_length: int = 5, vocab_size: int = 100) -> list[str]:
-        """
-        Generate a list of length `vocab_size` with random words with a minimum length of
-        `min_word_length`
-
-        :param min_word_length:
-        :param vocab_size:
-        :return:
-        """
-        # generate random word list
-        words = [
-            "".join(
-                random.choice(string.ascii_letters) for _ in range(
-                    random.randint(min_word_length, min_word_length + random.randint(0, 10))
-                )
-            ) for _ in range(vocab_size)
-        ]
-
-        # remove duplicates
-        words = list(dict.fromkeys(words))
-        return words
-
     def _fill_tokenizer_vocab(self,
                               tokenizer: tokenizers.BaseTokenizer,
                               min_word_length: int = 5,
@@ -43,7 +21,7 @@ class SimpleTokenizersTest(unittest.TestCase):
         :return:
         """
         # generate random word list
-        words = self._generate_unique_word_list(min_word_length, vocab_size)
+        words = utils.generate_unique_word_list(min_word_length, vocab_size)
 
         # let tokenizer tokenize each word in list to build up vocabulary
         for word in words:
@@ -124,7 +102,7 @@ class SimpleTokenizersTest(unittest.TestCase):
 
     def test_tokenize_list(self):
         simple_tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
-        words = self._generate_unique_word_list()
+        words = utils.generate_unique_word_list()
         tokenized_list = simple_tokenizer.tokenize(words)
         self.assertIsInstance(tokenized_list, list,
                               f"Tokenizing a list with the simple tokenizer should return "
@@ -164,7 +142,7 @@ class SimpleTokenizersTest(unittest.TestCase):
 
     def test_tokenize_df_column(self):
         simple_tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
-        words = self._generate_unique_word_list()
+        words = utils.generate_unique_word_list()
         original_df = pd.DataFrame(words)
         tokenized_column = simple_tokenizer.tokenize(original_df[0])
         self.assertIsInstance(tokenized_column, pd.Series,
