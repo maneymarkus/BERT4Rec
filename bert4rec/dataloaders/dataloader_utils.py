@@ -168,3 +168,11 @@ def split_dataset(ds: tf.data.Dataset,
     test_ds = ds.skip(train_size).skip(val_size)
 
     return train_ds, val_ds, test_ds
+
+
+def make_batches(dataset: tf.data.Dataset, buffer_size: int = 2000, batch_size: int = 64):
+    return dataset \
+        .cache() \
+        .shuffle(buffer_size) \
+        .batch(batch_size) \
+        .prefetch(tf.data.AUTOTUNE)
