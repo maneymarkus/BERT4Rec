@@ -34,7 +34,8 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         self.vocab = list()
         self.vocab_size = 0
 
-    def tokenize(self, input: Union[str, Iterable, pd.Series]) -> Union[int, list[int]]:
+    def tokenize(self, input: Union[str, Iterable, pd.Series, tf.Tensor, tf.RaggedTensor]) -> \
+            Union[int, list[int], tf.RaggedTensor]:
         """
         This method tokenizes given input of different supported types and returns a tokenized string, list or
         dataframe column
@@ -42,8 +43,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         if isinstance(input, str):
             tokenized = self._tokenize_string(input)
         elif isinstance(input, tf.Tensor) or isinstance(input, tf.RaggedTensor):
-            # since tf.Tensor and tf.RaggedTensor are iterable there is no need to specify them as an allowed input type
-            # separately. However, they need to be handled differently
+            # tf.Tensor and tf.RaggedTensor have to be handled before the Iterable type as both are also Iterables
             tokenized = self._tokenize_tensor(input)
         elif isinstance(input, pd.Series):
             tokenized = self._tokenize_df_column(input)
@@ -53,17 +53,23 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
             raise ValueError("The provided argument is not of a supported type")
         return tokenized
 
-    def detokenize(self, token: Union[int, Iterable[int], pd.Series]) -> Union[int, list, pd.Series]:
+    def detokenize(self,
+                   token: Union[int, Iterable[int], pd.Series, tf.Tensor, tf.RaggedTensor],
+                   drop_tokens: list[str] = None) -> \
+            Union[int, list, pd.Series, tf.RaggedTensor]:
         """
         This method converts from tokens back to strings and returns either a detokenized string, list or
         dataframe column
         """
         if isinstance(token, int):
-            value = self._detokenize_token(token)
+            value = self._detokenize_token(token, drop_tokens)
+        elif isinstance(token, tf.Tensor) or isinstance(token, tf.RaggedTensor):
+            # tf.Tensor and tf.RaggedTensor have to be handled before the Iterable type as both are also Iterables
+            value = self._detokenize_tensor(token, drop_tokens)
         elif isinstance(token, pd.Series):
-            value = self._detokenize_df_column(token)
+            value = self._detokenize_df_column(token, drop_tokens)
         elif isinstance(token, Iterable):
-            value = self._detokenize_iterable(token)
+            value = self._detokenize_iterable(token, drop_tokens)
         else:
             raise ValueError("The provided argument is not of a supported type")
         return value
@@ -115,23 +121,33 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         """
         return df_column_input.map(self._tokenize_string)
 
-    def _tokenize_tensor(self, tensor: [tf.Tensor, tf.RaggedTensor]) -> tf.Tensor:
-        tokenized = list()
+    def _tokenize_tensor(self, tensor: [tf.Tensor, tf.RaggedTensor]) -> tf.RaggedTensor:
         value_list = tensor.numpy()
         tokenized = [self._tokenize_string(v) for v in value_list]
         return tf.ragged.constant([tokenized], dtype=tf.int64)
 
-    def _detokenize_token(self, token: int):
+    def _detokenize_token(self, token: int, drop_tokens: list[str] = None):
         value = None
         if 0 <= token < self.vocab_size:
             value = self.vocab[token]
+        if value in drop_tokens:
+            value = None
         return value
 
-    def _detokenize_iterable(self, tokens: Iterable[int]) -> list:
+    def _detokenize_iterable(self, tokens: Iterable[int], drop_tokens: list[str] = None) -> list:
         values = list()
         for t in tokens:
-            values.append(self._detokenize_token(t))
+            value = self._detokenize_token(t, drop_tokens)
+            if value is not None:
+                values.append(value)
         return values
 
-    def _detokenize_df_column(self, token_column: pd.Series) -> pd.Series:
-        return token_column.map(self._detokenize_token)
+    def _detokenize_tensor(self,
+                           tokenized_tensor: Union[tf.Tensor, tf.RaggedTensor],
+                           drop_tokens: list[str] = None) -> tf.RaggedTensor:
+        tensor_values = tokenized_tensor.numpy()
+        values = self._detokenize_iterable(tensor_values, drop_tokens)
+        return tf.ragged.constant(values, dtype=tf.string)
+
+    def _detokenize_df_column(self, token_column: pd.Series, drop_tokens: list[str] = None) -> pd.Series:
+        return token_column.map(self._detokenize_token, drop_tokens)

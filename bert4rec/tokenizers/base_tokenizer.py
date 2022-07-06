@@ -41,11 +41,12 @@ class BaseTokenizer(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def detokenize(self, token: str):
+    def detokenize(self, token: str, drop_tokens: list[str] = None):
         """
         Return the corresponding string the given `token` represents
 
         :param token: Should be converted back to original value
+        :param drop_tokens: A list of the string representation of the tokens that should be dropped on conversion
         :return: Corresponding (original) value
         """
         pass
