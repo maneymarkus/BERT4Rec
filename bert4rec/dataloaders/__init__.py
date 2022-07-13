@@ -23,7 +23,23 @@ class BaseDataloaderFactory(ABC):
 
 class BaseDataloader(ABC):
     @abstractmethod
-    def load_data(self) -> tuple[tf.data.Dataset, tf.data.Dataset, tf.data.Dataset]:
+    def load_data(self) -> tf.data.Dataset:
+        """
+        Load data into a tf.data.Dataset object
+
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def preprocess_dataset(self, ds: tf.data.Dataset = None) -> tf.data.Dataset:
+        """
+        Preprocesses the dataset to prepare it for usage with the model. Param `ds` is optional as each
+        dataloader is only responsible for a single dataset and therefore only ever loads one dataset
+
+        :param ds: The dataset that should be preprocessed
+        :return:
+        """
         pass
 
 
