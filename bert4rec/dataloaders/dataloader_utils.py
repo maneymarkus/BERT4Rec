@@ -96,10 +96,8 @@ def trim_content(
 
 def apply_dynamic_masking_task(segments: tf.RaggedTensor,
                                max_selections_per_batch: int,
-                               start_token_id: int,
-                               end_token_id: int,
-                               unk_token_id: int,
                                mask_token_id: int,
+                               special_token_ids: list[int],
                                vocab_size: int,
                                selection_rate: float = 0.2,
                                mask_token_rate: float = 0.8,
@@ -112,9 +110,8 @@ def apply_dynamic_masking_task(segments: tf.RaggedTensor,
 
     :param segments: tf.RaggedTensor containing the segments to be masked
     :param max_selections_per_batch: Maximum amount of selections per batch to be masked
-    :param start_token_id:
-    :param end_token_id:
-    :param unk_token_id:
+    :param special_token_ids: Special tokens that shouldn't be selected as a masking target
+    and shouldn't be inserted as random tokens
     :param mask_token_id:
     :param vocab_size:
     :param selection_rate: Percentage of segments that should be selected for the masking task
@@ -124,7 +121,7 @@ def apply_dynamic_masking_task(segments: tf.RaggedTensor,
     """
     random_selector = tf_text.RandomItemSelector(max_selections_per_batch=max_selections_per_batch,
                                                  selection_rate=selection_rate,
-                                                 unselectable_ids=[start_token_id, end_token_id, unk_token_id])
+                                                 unselectable_ids=special_token_ids)
     mask_values_chooser = tf_text.MaskValuesChooser(vocab_size=vocab_size,
                                                     mask_token=mask_token_id,
                                                     mask_token_rate=mask_token_rate,

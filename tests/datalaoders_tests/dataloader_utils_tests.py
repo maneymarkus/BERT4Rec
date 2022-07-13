@@ -76,10 +76,8 @@ class DataloaderUtilsTest(unittest.TestCase):
             utils.apply_dynamic_masking_task(
                 segments=original_tensor,
                 max_selections_per_batch=mspb,
-                start_token_id=sti,
-                end_token_id=eti,
-                unk_token_id=uti,
                 mask_token_id=mti,
+                special_token_ids=[sti, eti, uti],
                 vocab_size=vocab_size,
                 selection_rate=sr,
                 mask_token_rate=mtr,
