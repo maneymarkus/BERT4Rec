@@ -1,7 +1,9 @@
 from collections.abc import Iterable
+import numbers
 import pandas as pd
 import pathlib
 import tensorflow as tf
+from tensorflow.python.framework.ops import Tensor, EagerTensor
 from typing import Union
 
 import bert4rec.tokenizers.base_tokenizer as base_tokenizer
@@ -16,7 +18,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
     Even more concrete example: "Action|Drama|Children" => [2]
     See: MultiHotContentTokenizer for comparison
     """
-    def __init__(self, vocab_file_path: pathlib.Path = None):
+    def __init__(self, vocab_file_path: pathlib.Path = None, extensible: bool = True):
         """
         Converts a string containing multiple properties seperated by a specific symbol
         into a list of ids, where each id represents one property (so each string
@@ -25,21 +27,23 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         Even more concrete example: "Action|Drama|Children" => [3,5,6]
         See: FullStringToOneIdContentTokenizer for comparison
         """
-        super().__init__(vocab_file_path=vocab_file_path)
+        super().__init__(vocab_file_path=vocab_file_path, extensible=extensible)
         # initialize token map as list as this tokenizer uses numerical tokens and increases the token for each new
         # entry
-        self.vocab = list()
+        self._vocab = list()
 
     def clear_vocab(self):
-        self.vocab = list()
-        self.vocab_size = 0
+        self._vocab = list()
+        self._vocab_size = 0
 
-    def tokenize(self, input: Union[str, Iterable, pd.Series, tf.Tensor, tf.RaggedTensor]) -> \
-            Union[int, list[int], tf.RaggedTensor]:
+    def tokenize(self, input) -> Union[int, list[int], tf.RaggedTensor]:
         """
         This method tokenizes given input of different supported types and returns a tokenized string, list or
         dataframe column
         """
+        if isinstance(input, bytes):
+            input = input.decode()
+
         if isinstance(input, str):
             tokenized = self._tokenize_string(input)
         elif isinstance(input, tf.Tensor) or isinstance(input, tf.RaggedTensor):
@@ -54,14 +58,13 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         return tokenized
 
     def detokenize(self,
-                   token: Union[int, Iterable[int], pd.Series, tf.Tensor, tf.RaggedTensor],
-                   drop_tokens: list[str] = None) -> \
-            Union[int, list, pd.Series, tf.RaggedTensor]:
+                   token,
+                   drop_tokens: list[str] = None) -> Union[int, list, pd.Series, tf.RaggedTensor]:
         """
         This method converts from tokens back to strings and returns either a detokenized string, list or
         dataframe column
         """
-        if isinstance(token, int):
+        if isinstance(token, numbers.Number):
             value = self._detokenize_token(token, drop_tokens)
         elif isinstance(token, tf.Tensor) or isinstance(token, tf.RaggedTensor):
             # tf.Tensor and tf.RaggedTensor have to be handled before the Iterable type as both are also Iterables
@@ -75,10 +78,10 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         return value
 
     def import_vocab_from_file(self, vocab_file: pathlib.Path) -> None:
-        self.vocab = utils.import_num_vocab_from_file(vocab_file)
+        self._vocab = utils.import_num_vocab_from_file(vocab_file)
 
     def export_vocab_to_file(self, file_path: pathlib.Path) -> None:
-        utils.export_num_vocab_to_file(file_path, self.vocab)
+        utils.export_num_vocab_to_file(file_path, self._vocab)
 
     def _tokenize_string(self, string: str) -> int:
         """
@@ -90,12 +93,15 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         if isinstance(string, bytes):
             string = string.decode("utf-8")
 
-        if string in self.vocab:
-            token = self.vocab.index(string)
+        if string in self._vocab:
+            token = self._vocab.index(string)
         else:
-            self.vocab.append(string)
-            self.vocab_size = len(self.vocab)
-            token = self.vocab_size - 1
+            if not self._extensible:
+                raise RuntimeError(f"\"{string}\" is not known!")
+            self._vocab.append(string)
+            self._vocab_size = len(self._vocab)
+            token = self._vocab_size - 1
+
         return token
 
     def _tokenize_iterable(self, iterable: Iterable) -> list[int]:
@@ -119,35 +125,38 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
             split = np.array_split(column, self.n_cores)
             p.map(self.__call__, split)
         """
-        return df_column_input.map(self._tokenize_string)
+        return df_column_input.map(self.tokenize)
 
-    def _tokenize_tensor(self, tensor: [tf.Tensor, tf.RaggedTensor]) -> tf.RaggedTensor:
-        value_list = tensor.numpy()
-        tokenized = [self._tokenize_string(v) for v in value_list]
-        return tf.ragged.constant([tokenized], dtype=tf.int64)
+    def _tokenize_tensor(self, tensor: [Tensor, EagerTensor, tf.RaggedTensor]) -> tf.RaggedTensor:
+        value = tensor.numpy()
+        if isinstance(value, Iterable):
+            tokenized = [self.tokenize(v) for v in value]
+        else:
+            tokenized = self.tokenize(value)
+        return tf.ragged.constant(tokenized, dtype=tf.int64)
 
     def _detokenize_token(self, token: int, drop_tokens: list[str] = None):
         value = None
-        if 0 <= token < self.vocab_size:
-            value = self.vocab[token]
-        if value in drop_tokens:
+        if 0 <= token < self._vocab_size:
+            value = self._vocab[token]
+        if drop_tokens and value in drop_tokens:
             value = None
         return value
 
     def _detokenize_iterable(self, tokens: Iterable[int], drop_tokens: list[str] = None) -> list:
         values = list()
         for t in tokens:
-            value = self._detokenize_token(t, drop_tokens)
+            value = self.detokenize(t, drop_tokens)
             if value is not None:
                 values.append(value)
         return values
 
     def _detokenize_tensor(self,
-                           tokenized_tensor: Union[tf.Tensor, tf.RaggedTensor],
+                           tokenized_tensor: Union[Tensor, EagerTensor, tf.RaggedTensor],
                            drop_tokens: list[str] = None) -> tf.RaggedTensor:
-        tensor_values = tokenized_tensor.numpy()
-        values = self._detokenize_iterable(tensor_values, drop_tokens)
+        tensor_values = tokenized_tensor.numpy().tolist()
+        values = self.detokenize(tensor_values, drop_tokens)
         return tf.ragged.constant(values, dtype=tf.string)
 
     def _detokenize_df_column(self, token_column: pd.Series, drop_tokens: list[str] = None) -> pd.Series:
-        return token_column.map(self._detokenize_token, drop_tokens)
+        return token_column.map(self.detokenize, drop_tokens)

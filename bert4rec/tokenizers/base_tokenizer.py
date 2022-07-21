@@ -1,5 +1,6 @@
 import abc
 import pathlib
+import tensorflow as tf
 
 
 class BaseTokenizer(abc.ABC):
@@ -17,12 +18,60 @@ class BaseTokenizer(abc.ABC):
     3. Retrieve single tokens via the self.get_token() method or convert a whole dataframe column
         to tokens via the self.convert_column_to_ids() method
     """
-    def __init__(self, vocab_file_path: pathlib.Path = None):
-        self.max_len = 1
-        self.vocab_size = 0
-        self.vocab = None
+    def __init__(self,
+                 vocab_file_path: pathlib.Path = None,
+                 extensible: bool = True):
+        """
+        Initializes a tokenizer inheriting from this base class
+
+        :param vocab_file_path: The path to the vocab file
+        :param extensible: Determines the mode in which this tokenizer works. If true, then newly encountered
+        items will be dynamically tokenized with a new token. If false, unknown tokens will throw an error
+        """
+        self._max_len = 1
+        self._vocab_size = 0
+        self._vocab = None
+        self._extensible = extensible
         if vocab_file_path is not None and vocab_file_path.is_file():
+            self._extensible = False
             self.import_vocab_from_file(vocab_file_path)
+
+    def generate_vocab_from_ds(self, ds: tf.data.Dataset):
+        """
+        Generate vocab of the tokenizer by traversing the given text_ds.
+        May take some time.
+
+        :param ds: The dataset that contains only vectors (single axis tensors) with the elements
+        that should be tokenized
+        :return:
+        """
+        for features in ds:
+            self.tokenize(features)
+
+    def get_vocab(self) -> dict:
+        return self._vocab
+
+    def get_vocab_size(self) -> int:
+        return self._vocab_size
+
+    def enable_extensibility(self):
+        """
+        Switches extensibility to True and enables the dynamic tokenizing of new items
+
+        :return: True
+        """
+        self._extensible = True
+        return True
+
+    def disable_extensibility(self):
+        """
+        Switches extensibility to False and disables the dynamic tokenizing of new items -> unknown items will
+        throw an error from now on
+
+        :return: True
+        """
+        self._extensible = False
+        return True
 
     @abc.abstractmethod
     def clear_vocab(self):
@@ -78,10 +127,4 @@ class BaseTokenizer(abc.ABC):
         The value is used for static padding.
         See multi_hot_tokenizer.
         """
-        return self.max_len
-
-    def get_vocab(self) -> dict:
-        return self.vocab
-
-    def get_vocab_size(self) -> int:
-        return self.vocab_size
+        return self._max_len
