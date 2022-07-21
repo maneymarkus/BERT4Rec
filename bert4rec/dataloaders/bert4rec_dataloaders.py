@@ -19,7 +19,6 @@ import datasets.reddit as reddit
 
 class BERT4RecDataloader(BaseDataloader, abc.ABC):
     def __init__(self, max_predictions_per_batch: int = 5, max_seq_length: int = 128):
-        self.lookup = None
         # BERT4Rec works with simple tokenizer
         self.tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
         self._PAD_TOKEN = "[PAD]"
@@ -39,6 +38,15 @@ class BERT4RecDataloader(BaseDataloader, abc.ABC):
         self._MAX_PREDICTIONS_PER_BATCH = max_predictions_per_batch
         self._MAX_SEQ_LENGTH = max_seq_length
 
+    def preprocess_dataset(self, ds: tf.data.Dataset = None, apply_mlm: bool = True, finetuning: bool = False) \
+            -> tf.data.Dataset:
+        if ds is None:
+            ds = self.load_data()
+
+        prepared_ds = ds.map(functools.partial(self.ds_map_fn, apply_mlm, finetuning))
+
+        return prepared_ds
+
     def feature_preprocessing(self,
                               x: tf.int64,
                               sequence: list[str],
@@ -57,7 +65,11 @@ class BERT4RecDataloader(BaseDataloader, abc.ABC):
         # initiate return dictionary
         processed_features = dict()
 
-        # tokenize segments to shape [num_items] each
+        # Expand rank by 1 if rank of dataset tensor is only 1
+        if tf.equal(tf.rank(sequence), tf.constant([1])):
+            sequence = tf.expand_dims(sequence, 0)
+
+        # tokenize segments (the segments have to be in a list, in order to apply the content trimming!)
         segments = [self.tokenizer.tokenize(sequence)]
 
         # truncate inputs to a maximum length
@@ -119,9 +131,9 @@ class BERT4RecDataloader(BaseDataloader, abc.ABC):
                 max_seq_length=self._MAX_PREDICTIONS_PER_BATCH
             )
 
-            processed_features["masked_lm_ids"] = tf.squeeze(masked_lm_ids)
-            processed_features["masked_lm_positions"] = tf.squeeze(masked_lm_positions)
-            processed_features["masked_lm_weights"] = tf.squeeze(masked_lm_weights)
+            processed_features["masked_lm_ids"] = masked_lm_ids
+            processed_features["masked_lm_positions"] = masked_lm_positions
+            processed_features["masked_lm_weights"] = masked_lm_weights
 
         # pad labels
         labels, _ = tf_text.pad_model_inputs(
@@ -129,10 +141,10 @@ class BERT4RecDataloader(BaseDataloader, abc.ABC):
             max_seq_length=self._MAX_SEQ_LENGTH
         )
 
-        processed_features["labels"] = tf.squeeze(labels)
-        processed_features["input_word_ids"] = tf.squeeze(input_word_ids)
-        processed_features["input_mask"] = tf.squeeze(input_mask)
-        processed_features["input_type_ids"] = tf.squeeze(input_type_ids)
+        processed_features["labels"] = labels
+        processed_features["input_word_ids"] = input_word_ids
+        processed_features["input_mask"] = input_mask
+        processed_features["input_type_ids"] = input_type_ids
 
         return processed_features
 
@@ -202,6 +214,15 @@ class BERT4RecDataloader(BaseDataloader, abc.ABC):
     def get_tokenizer(self):
         return self.tokenizer
 
+    @abc.abstractmethod
+    def generate_vocab(self) -> True:
+        """
+        Fills the vocab of the tokenizer with items from the respective dataset
+
+        :return: True
+        """
+        pass
+
 
 class BERT4RecML1MDataloader(BERT4RecDataloader):
     def load_data(self) -> tf.data.Dataset:
@@ -215,14 +236,11 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
         ds = utils.convert_df_to_ds(user_grouped_df, datatypes)
         return ds
 
-    def preprocess_dataset(self, ds: tf.data.Dataset = None, apply_mlm: bool = True, finetuning: bool = False) \
-            -> tf.data.Dataset:
-        if ds is None:
-            ds = self.load_data()
-
-        prepared_ds = ds.map(functools.partial(self.ds_map_fn, apply_mlm, finetuning))
-
-        return prepared_ds
+    def generate_vocab(self) -> True:
+        df = ml_1m.load_ml_1m()
+        vocab = set(df["movie_name"])
+        _ = self.tokenizer.tokenize(vocab)
+        return True
 
 
 class BERT4RecML20MDataloader(BERT4RecDataloader):
@@ -237,14 +255,11 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
         ds = utils.convert_df_to_ds(user_grouped_df, datatypes)
         return ds
 
-    def preprocess_dataset(self, ds: tf.data.Dataset = None, apply_mlm: bool = True, finetuning: bool = False) \
-            -> tf.data.Dataset:
-        if ds is None:
-            ds = self.load_data()
-
-        prepared_ds = ds.map(functools.partial(self.ds_map_fn, apply_mlm, finetuning))
-
-        return prepared_ds
+    def generate_vocab(self) -> True:
+        df = ml_20m.load_ml_20m()
+        vocab = set(df["movie_name"])
+        _ = self.tokenizer.tokenize(vocab)
+        return True
 
 
 class BERT4RecIMDBDataloader(BERT4RecDataloader):
@@ -252,7 +267,7 @@ class BERT4RecIMDBDataloader(BERT4RecDataloader):
         raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
-    def preprocess_dataset(self, ds: tf.data.Dataset = None) -> tf.data.Dataset:
+    def generate_vocab(self) -> True:
         raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
@@ -263,7 +278,7 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
         raise NotImplementedError("The Reddit dataset is not yet implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
-    def preprocess_dataset(self, ds: tf.data.Dataset = None) -> tf.data.Dataset:
+    def generate_vocab(self) -> True:
         raise NotImplementedError("The Reddit dataset is not yet implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
@@ -271,18 +286,14 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
 if __name__ == "__main__":
     logging.set_verbosity(logging.DEBUG)
     dataloader = BERT4RecML1MDataloader()
+    dataloader.generate_vocab()
+    tokenizer = dataloader.get_tokenizer()
     ds = dataloader.load_data()
-    prepared_ds = dataloader.preprocess_dataset(ds, True, True)
-    for x in prepared_ds.take(1):
-        print(x)
-
-    exit()
-
-    test_data = tf.ragged.constant([random.choice(string.ascii_letters) for _ in range(25)])
+    prepared_ds = dataloader.preprocess_dataset(ds, True, False)
+    test_data = tf.ragged.constant([[random.choice(string.ascii_letters) for _ in range(25)]])
     logging.debug(test_data)
     model_input = dataloader.feature_preprocessing(None, test_data, True)
     logging.debug(model_input)
     tensor = model_input["input_word_ids"]
-    tokenizer = dataloader.get_tokenizer()
     detokenized = tokenizer.detokenize(tensor, ["[PAD]"])
     print(detokenized)
