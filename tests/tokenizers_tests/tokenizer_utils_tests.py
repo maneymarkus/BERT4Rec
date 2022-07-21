@@ -2,14 +2,21 @@ from absl import logging
 import pathlib
 import random
 import tempfile
-import unittest
+import tensorflow as tf
 import uuid
 
 import tests.test_utils as utils
 import bert4rec.tokenizers.tokenizer_utils as tokenizer_utils
 
 
-class TokenizerUtilsTest(unittest.TestCase):
+class TokenizerUtilsTest(tf.test.TestCase):
+    def setUp(self):
+        super(TokenizerUtilsTest, self).setUp()
+        logging.set_verbosity(logging.DEBUG)
+
+    def tearDown(self):
+        pass
+
     def _create_vocab_file(self, vocab_size: int = 100):
         vocab = utils.generate_unique_word_list(vocab_size=vocab_size)
         tmp = tempfile.NamedTemporaryFile(mode="wt", delete=False)
@@ -19,7 +26,6 @@ class TokenizerUtilsTest(unittest.TestCase):
         return vocab, tmp
 
     def test_export_num_vocab_to_file(self):
-        logging.set_verbosity(logging.DEBUG)
         with self.assertRaises(ValueError):
             _ = tokenizer_utils.export_num_vocab_to_file(pathlib.Path("/" + str(uuid.uuid4())), [])
 
@@ -63,3 +69,7 @@ class TokenizerUtilsTest(unittest.TestCase):
         self.assertEqual(original_vocab, vocab, f"The original vocab list:\n{original_vocab}\n "
                                                 f"should be equal to the read vocab from the vocab file, "
                                                 f"but actually is:\n{vocab}")
+
+
+if __name__ == "__main__":
+    tf.test.main()
