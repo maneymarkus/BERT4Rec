@@ -4,14 +4,19 @@ import random
 import string
 import tensorflow as tf
 import tensorflow_text as tf_text
-import unittest
 
 import bert4rec.dataloaders.dataloader_utils as utils
 
 
-class DataloaderUtilsTest(unittest.TestCase):
-    def test_convert_df_into_ds(self):
+class DataloaderUtilsTest(tf.test.TestCase):
+    def setUp(self):
+        super(DataloaderUtilsTest, self).setUp()
         logging.set_verbosity(logging.DEBUG)
+
+    def tearDown(self):
+        pass
+
+    def test_convert_df_into_ds(self):
         ds_size = 5
         test_list = [
             [
@@ -50,7 +55,6 @@ class DataloaderUtilsTest(unittest.TestCase):
         logging.debug(ds)
 
     def test_masking_task(self):
-        logging.set_verbosity(logging.DEBUG)
         vocab_size = 1000
         seq_length = 100
         values = list(random.randint(0, vocab_size - 1) for _ in range(seq_length))
@@ -124,7 +128,6 @@ class DataloaderUtilsTest(unittest.TestCase):
                         f"less than or equal to the sequence length")
 
     def test_split_dataset(self):
-        logging.set_verbosity(logging.DEBUG)
         ds_size = 5000
         train_split = 0.7
         val_split = 0.2
@@ -171,3 +174,7 @@ class DataloaderUtilsTest(unittest.TestCase):
             self.assertEqual(actual_test_ds_size, expected_test_ds_size,
                              f"The split training dataset should have an expected size of {expected_test_ds_size}, "
                              f"but actually has a size of {actual_test_ds_size}")
+
+
+if __name__ == "__main__":
+    tf.test.main()
