@@ -5,12 +5,15 @@ See: https://grouplens.org/datasets/movielens/1m/
 from absl import logging
 import numpy as np
 import pandas as pd
+import tqdm
 
 import datasets.dataset_utils as dataset_utils
 import bert4rec.utils as utils
 
 
 def load_ml_1m() -> pd.DataFrame:
+    tqdm.tqdm.pandas()
+
     url = 'https://files.grouplens.org/datasets/movielens/ml-1m.zip'
     download_dir = utils.get_virtual_env_path().joinpath("data", "ml-1m")
     # size in bytes of the fully downloaded dataset
@@ -27,7 +30,7 @@ def load_ml_1m() -> pd.DataFrame:
     movies_file_path = download_dir.joinpath('movies.dat')
     movies_df = pd.read_csv(movies_file_path, sep='::', header=None, encoding="iso-8859-1")
     movies_df.columns = ['sid', 'movie_name', 'categories']
-    df = pd.merge(df, movies_df)
+    df = pd.merge(df, movies_df).progress_apply(lambda x: x)
     return df
 
 
