@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
 
-from bert4rec.model.components import model_utils
+from bert4rec.model.components import component_utils
 
 
 def all_strategy_combinations():
@@ -30,8 +30,8 @@ class TFUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
             @tf.function
             def function():
-                replica_value = tf.fill(shape, model_utils.get_replica_id())
-                return model_utils.cross_replica_concat(replica_value, axis=axis)
+                replica_value = tf.fill(shape, component_utils.get_replica_id())
+                return component_utils.cross_replica_concat(replica_value, axis=axis)
 
             return function
 
@@ -62,7 +62,7 @@ class TFUtilsTest(tf.test.TestCase, parameterized.TestCase):
             replica_value = tf.random.normal(shape)
             with tf.GradientTape() as tape:
                 tape.watch(replica_value)
-                concat_value = model_utils.cross_replica_concat(replica_value, axis=0)
+                concat_value = component_utils.cross_replica_concat(replica_value, axis=0)
                 output = tf.reduce_sum(concat_value)
             return tape.gradient(output, replica_value)
 

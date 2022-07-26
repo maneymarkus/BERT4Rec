@@ -17,7 +17,7 @@
 from absl import logging
 import tensorflow as tf
 
-from bert4rec.model.components import model_utils
+from bert4rec.model.components import component_utils
 from bert4rec.model.components.layers import layer_utils as utils
 
 
@@ -157,7 +157,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             self._attention_initializer = tf.keras.initializers.get(
                 attention_initializer)
         else:
-            self._attention_initializer = model_utils.clone_initializer(
+            self._attention_initializer = component_utils.clone_initializer(
                 self._kernel_initializer)
         self._attention_axes = attention_axes
 
@@ -201,7 +201,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             dropout=self._attention_dropout,
             use_bias=self._use_bias,
             kernel_initializer=self._attention_initializer,
-            bias_initializer=model_utils.clone_initializer(self._bias_initializer),
+            bias_initializer=component_utils.clone_initializer(self._bias_initializer),
             attention_axes=self._attention_axes,
             output_shape=self._output_last_dim,
             name="self_attention",
@@ -228,8 +228,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             einsum_equation,
             output_shape=(None, self._inner_dim),
             bias_axes="d",
-            kernel_initializer=model_utils.clone_initializer(self._kernel_initializer),
-            bias_initializer=model_utils.clone_initializer(self._bias_initializer),
+            kernel_initializer=component_utils.clone_initializer(self._kernel_initializer),
+            bias_initializer=component_utils.clone_initializer(self._bias_initializer),
             name="intermediate",
             **common_kwargs)
         policy = tf.keras.mixed_precision.global_policy()
@@ -247,8 +247,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             output_shape=(None, last_output_shape),
             bias_axes="d",
             name="output",
-            kernel_initializer=model_utils.clone_initializer(self._kernel_initializer),
-            bias_initializer=model_utils.clone_initializer(self._bias_initializer),
+            kernel_initializer=component_utils.clone_initializer(self._kernel_initializer),
+            bias_initializer=component_utils.clone_initializer(self._bias_initializer),
             **common_kwargs)
         self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
         # Use float32 in layernorm for numeric stability.
