@@ -8,7 +8,7 @@ import string
 import tensorflow as tf
 import tensorflow_text as tf_text
 
-from bert4rec.dataloaders import BaseDataloader
+from bert4rec.dataloaders.base_dataloader import BaseDataloader
 import bert4rec.dataloaders.dataloader_utils as utils
 import bert4rec.tokenizers as tokenizers
 import datasets.imdb as imdb
@@ -17,7 +17,7 @@ import datasets.ml_20m as ml_20m
 import datasets.reddit as reddit
 
 
-class BERT4RecDataloader(BaseDataloader, abc.ABC):
+class BERT4RecDataloader(BaseDataloader):
     def __init__(self, max_predictions_per_batch: int = 5, max_seq_length: int = 128):
         # BERT4Rec works with simple tokenizer
         self.tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
@@ -37,6 +37,12 @@ class BERT4RecDataloader(BaseDataloader, abc.ABC):
                                 self._START_TOKEN, self._END_TOKEN]
         self._MAX_PREDICTIONS_PER_BATCH = max_predictions_per_batch
         self._MAX_SEQ_LENGTH = max_seq_length
+
+    def load_data(self) -> tf.data.Dataset:
+        pass
+
+    def generate_vocab(self) -> True:
+        pass
 
     def preprocess_dataset(self, ds: tf.data.Dataset = None, apply_mlm: bool = True, finetuning: bool = False) \
             -> tf.data.Dataset:
@@ -210,18 +216,6 @@ class BERT4RecDataloader(BaseDataloader, abc.ABC):
         processed_features["input_type_ids"] = output[3]
 
         return processed_features
-
-    def get_tokenizer(self):
-        return self.tokenizer
-
-    @abc.abstractmethod
-    def generate_vocab(self) -> True:
-        """
-        Fills the vocab of the tokenizer with items from the respective dataset
-
-        :return: True
-        """
-        pass
 
 
 class BERT4RecML1MDataloader(BERT4RecDataloader):

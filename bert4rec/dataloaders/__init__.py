@@ -1,45 +1,26 @@
-from abc import ABC, abstractmethod
+import abc
 
 from .dataloader_utils import *
+from .base_dataloader import BaseDataloader
+from .bert4rec_dataloaders import BERT4RecDataloader, BERT4RecML1MDataloader, BERT4RecML20MDataloader, \
+    BERT4RecIMDBDataloader, BERT4RecRedditDataloader
 
 
-class BaseDataloaderFactory(ABC):
-    @abstractmethod
-    def create_ml_1m_dataloader(self):
+class BaseDataloaderFactory(abc.ABC):
+    @abc.abstractmethod
+    def create_ml_1m_dataloader(self) -> BaseDataloader:
         pass
 
-    @abstractmethod
-    def create_ml_20m_dataloader(self):
+    @abc.abstractmethod
+    def create_ml_20m_dataloader(self) -> BaseDataloader:
         pass
 
-    @abstractmethod
-    def create_reddit_dataloader(self):
+    @abc.abstractmethod
+    def create_reddit_dataloader(self) -> BaseDataloader:
         pass
 
-    @abstractmethod
-    def create_imdb_dataloader(self):
-        pass
-
-
-class BaseDataloader(ABC):
-    @abstractmethod
-    def load_data(self) -> tf.data.Dataset:
-        """
-        Load data into a tf.data.Dataset object
-
-        :return:
-        """
-        pass
-
-    @abstractmethod
-    def preprocess_dataset(self, ds: tf.data.Dataset = None) -> tf.data.Dataset:
-        """
-        Preprocesses the dataset to prepare it for usage with the model. Param `ds` is optional as each
-        dataloader is only responsible for a single dataset and therefore only ever loads one dataset
-
-        :param ds: The dataset that should be preprocessed
-        :return:
-        """
+    @abc.abstractmethod
+    def create_imdb_dataloader(self) -> BaseDataloader:
         pass
 
 
@@ -48,17 +29,17 @@ class BaseDataloader(ABC):
 ############################################################
 
 class BERT4RecDataloaderFactory(BaseDataloaderFactory):
-    def create_ml_1m_dataloader(self):
-        pass
+    def create_ml_1m_dataloader(self, **kwargs) -> BERT4RecDataloader:
+        return BERT4RecML1MDataloader(**kwargs)
 
-    def create_ml_20m_dataloader(self):
-        pass
+    def create_ml_20m_dataloader(self, **kwargs) -> BERT4RecDataloader:
+        return BERT4RecML20MDataloader(**kwargs)
 
-    def create_reddit_dataloader(self):
-        pass
+    def create_reddit_dataloader(self, **kwargs) -> BERT4RecDataloader:
+        return BERT4RecRedditDataloader(**kwargs)
 
-    def create_imdb_dataloader(self):
-        pass
+    def create_imdb_dataloader(self, **kwargs) -> BERT4RecDataloader:
+        return BERT4RecIMDBDataloader(**kwargs)
 
 
 def get_dataloader_factory(model: str = "bert4rec") -> BaseDataloaderFactory:
