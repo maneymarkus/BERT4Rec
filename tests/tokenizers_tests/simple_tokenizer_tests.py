@@ -126,7 +126,7 @@ class SimpleTokenizersTest(tf.test.TestCase):
         md_list = [
             utils.generate_unique_word_list() for _ in range(5)
         ]
-        md_list_2 = utils.generate_unique_word_list(vocab_size=20)
+        md_list_2 = utils.generate_unique_word_list(size=20)
         md_list_2.extend(md_list)
         tokenized_md_list = self.tokenizer.tokenize(md_list)
         tokenized_md_list_2 = self.tokenizer.tokenize(md_list_2)
@@ -153,7 +153,7 @@ class SimpleTokenizersTest(tf.test.TestCase):
         md_list = [
             utils.generate_unique_word_list() for _ in range(5)
         ]
-        md_list_2 = utils.generate_unique_word_list(vocab_size=20)
+        md_list_2 = utils.generate_unique_word_list(size=20)
         md_list_2.extend(md_list)
         tokenized_md_list = self.tokenizer.tokenize(md_list)
         tokenized_md_list_2 = self.tokenizer.tokenize(md_list_2)
@@ -234,9 +234,9 @@ class SimpleTokenizersTest(tf.test.TestCase):
                          f" should return the original value (Original value: {expected_value})")
 
     def test_tokenize_tensor(self):
-        words = utils.generate_unique_word_list(vocab_size=20)
+        words = utils.generate_unique_word_list(size=20)
         md_list = [
-            utils.generate_unique_word_list(vocab_size=(random.randint(5, 15))) for _ in range(5)
+            utils.generate_unique_word_list(size=(random.randint(5, 15))) for _ in range(5)
         ]
         tensor = tf.constant(words)
         ragged_tensor = tf.ragged.constant(md_list)
@@ -252,9 +252,9 @@ class SimpleTokenizersTest(tf.test.TestCase):
                          f"but is: {len(tokenized_ragged_tensor.numpy())}")
 
     def test_detokenize_tensor(self):
-        words = utils.generate_unique_word_list(vocab_size=20)
+        words = utils.generate_unique_word_list(size=20)
         md_list = [
-            utils.generate_unique_word_list(vocab_size=(random.randint(5, 15))) for _ in range(5)
+            utils.generate_unique_word_list(size=(random.randint(5, 15))) for _ in range(5)
         ]
         tensor = tf.constant(words)
         ragged_tensor = tf.ragged.constant(md_list)
