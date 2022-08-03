@@ -11,6 +11,11 @@ class BaseDataloader(abc.ABC):
     def get_tokenizer(self):
         return self.tokenizer
 
+    @property
+    @abc.abstractmethod
+    def dataset_code(self):
+        pass
+
     @abc.abstractmethod
     def load_data(self) -> tf.data.Dataset:
         """
