@@ -6,6 +6,7 @@ data
 experiments
 vocab
 manual_test.py
+saved_models
 
 
 #######################################
