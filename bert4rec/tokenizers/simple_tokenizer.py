@@ -32,6 +32,10 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         # entry
         self._vocab = list()
 
+    @property
+    def code(self):
+        return "simple"
+
     def clear_vocab(self):
         self._vocab = list()
         self._vocab_size = 0
@@ -79,6 +83,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
 
     def import_vocab_from_file(self, vocab_file: pathlib.Path) -> None:
         self._vocab = utils.import_num_vocab_from_file(vocab_file)
+        self._vocab_size = len(self._vocab)
 
     def export_vocab_to_file(self, file_path: pathlib.Path) -> None:
         utils.export_num_vocab_to_file(file_path, self._vocab)

@@ -73,6 +73,11 @@ class BaseTokenizer(abc.ABC):
         self._extensible = False
         return True
 
+    @property
+    @abc.abstractmethod
+    def code(self):
+        pass
+
     @abc.abstractmethod
     def clear_vocab(self):
         pass
