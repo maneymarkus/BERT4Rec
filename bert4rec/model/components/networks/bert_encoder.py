@@ -11,7 +11,7 @@ from bert4rec.model.components import layers
 _Initializer = Union[str, tf.keras.initializers.Initializer]
 _Activation = Union[str, Callable[..., Any]]
 
-_approx_gelu = lambda x: tf.keras.activations.gelu(x, approximate=True)
+_approx_gelu = tf.keras.layers.Lambda(lambda x: tf.keras.activations.gelu(x, approximate=True))
 
 
 class BertEncoderV2(tf.keras.layers.Layer):
@@ -135,7 +135,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
         # 'hidden_size'.
         self._embedding_projection = None
         if embedding_width != hidden_size:
-            self._embedding_projection = tf.keras.layers.EinsumDense(
+            self._embedding_projection = tf.keras.layers.experimental.EinsumDense(
                 '...x,xy->...y',
                 output_shape=hidden_size,
                 bias_axes='y',
@@ -427,7 +427,7 @@ class BertEncoder(tf.keras.Model):
         # We project the 'embedding' output to 'hidden_size' if it is not already
         # 'hidden_size'.
         if embedding_width != hidden_size:
-            embedding_projection = tf.keras.layers.EinsumDense(
+            embedding_projection = tf.keras.layers.experimental.EinsumDense(
                 '...x,xy->...y',
                 output_shape=hidden_size,
                 bias_axes='y',
