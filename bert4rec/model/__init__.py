@@ -1,1 +1,1 @@
-from .bert4rec_model import BERT4RecModel
+from .bert4rec_model import BERTModel, BERT4RecModelWrapper

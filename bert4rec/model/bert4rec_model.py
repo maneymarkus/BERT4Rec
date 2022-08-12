@@ -1,4 +1,6 @@
 from absl import logging
+import collections
+import copy
 import json
 import pathlib
 import random
@@ -10,28 +12,69 @@ from bert4rec.model.components import networks
 import bert4rec.model.model_utils as utils
 from bert4rec.tokenizers import BaseTokenizer, tokenizer_factory
 
-
 _META_CONFIG_FILE_NAME = "meta_config.json"
 _TOKENIZER_VOCAB_FILE_NAME = "vocab.txt"
 
 
-class BERT4RecModel(tf.keras.Model):
+class BERTModel(tf.keras.Model):
+    # TODO: save and reload model correctly (i.e. make functions from encoder class available again after reloading)
     def __init__(self,
-                 encoder: networks.BertEncoder = None,
-                 vocab_size: int = None,
+                 encoder: networks.BertEncoder,
+                 name: str = "bert",
                  **kwargs):
-        if encoder is None:
-            if vocab_size is None:
-                raise ValueError("The vocab size has to be given, if no encoder is given!")
-            encoder = networks.BertEncoder(vocab_size=vocab_size)
 
-        inputs = encoder.inputs
+        super(BERTModel, self).__init__()
+
+        inputs = copy.copy(encoder.inputs)
         predictions = encoder(inputs)
 
-        # parent call after (!) creation of the network with the Functional API
-        super(BERT4RecModel, self).__init__(inputs=inputs, outputs=predictions, **kwargs)
+        self._config = {
+            "encoder": encoder,
+            "name": name,
+        }
+
         self.encoder = encoder
-        # called it meta config, since tensorflow layers and models already have a proper config dict
+        self.inputs = inputs
+
+    def call(self, inputs, training: bool = False):
+        if isinstance(inputs, list):
+            logging.warning('List inputs to the Bert Model are discouraged.')
+            inputs = dict([
+                (ref.name, tensor) for ref, tensor in zip(self.inputs, inputs)
+            ])
+
+        outputs = dict()
+        encoder_network_outputs = self.encoder(inputs)
+        if isinstance(encoder_network_outputs, list):
+            outputs['pooled_output'] = encoder_network_outputs[1]
+            # When `encoder_network` was instantiated with return_all_encoder_outputs
+            # set to True, `encoder_network_outputs[0]` is a list containing
+            # all transformer layers' output.
+            if isinstance(encoder_network_outputs[0], list):
+                outputs['encoder_outputs'] = encoder_network_outputs[0]
+                outputs['sequence_output'] = encoder_network_outputs[0][-1]
+            else:
+                outputs['sequence_output'] = encoder_network_outputs[0]
+        elif isinstance(encoder_network_outputs, dict):
+            outputs = encoder_network_outputs
+        else:
+            raise ValueError('encoder_network\'s output should be either a list '
+                             'or a dict, but got %s' % encoder_network_outputs)
+
+        return outputs
+
+    def get_config(self):
+        return self._config
+
+    @classmethod
+    def from_config(cls, config, custom_object=None):
+        return cls(**config)
+
+
+class BERT4RecModelWrapper:
+    def __init__(self,
+                 bert_model: BERTModel):
+        self.bert_model = bert_model
         self._meta_config = dict(
             {
                 "model": "BERT4Rec",
@@ -42,7 +85,7 @@ class BERT4RecModel(tf.keras.Model):
         )
 
     @classmethod
-    def load(cls, save_path: pathlib.Path, mode: int = 0):
+    def load(cls, save_path: pathlib.Path, mode: int = 0) -> dict:
         """
         Loads and returns all available assets in conjunction with the ml model. Loads at least a saved
         BERT4Rec model. Depending on the configuration might also load tokenizer with learnt vocab
@@ -56,13 +99,14 @@ class BERT4RecModel(tf.keras.Model):
         """
         save_path = utils.determine_model_path(save_path, mode)
         loaded_assets = dict()
-        loaded_model = tf.keras.models.load_model(save_path)
-        loaded_assets["model"] = loaded_model
+        loaded_bert = tf.keras.models.load_model(save_path, custom_objects={"BERTModel": BERTModel})
+        wrapper = cls(loaded_bert)
+        loaded_assets["model"] = wrapper
 
         try:
             with open(save_path.joinpath(_META_CONFIG_FILE_NAME)) as jf:
                 meta_config = json.load(jf)
-                loaded_model._meta_config = meta_config
+                wrapper._meta_config = meta_config
 
                 if "tokenizer" in meta_config and meta_config["tokenizer"] is not None:
                     tokenizer = tokenizer_factory.get_tokenizer(meta_config["tokenizer"])
@@ -79,7 +123,7 @@ class BERT4RecModel(tf.keras.Model):
         """
         Saves a model to the disk. If the tokenizer is given, saves the used vocab from the tokenizer as well.
 
-        :param save_path: The pathto save the model to
+        :param save_path: The path to save the model to
         :param tokenizer: If given, saves the used vocab from this tokenizer in the model directory
         :param mode: The mode determines where the model is stored. Available modes are 0, 1, 2.
         0 is default and stores the model relative to the project root. 1 stores the model relative
@@ -88,7 +132,7 @@ class BERT4RecModel(tf.keras.Model):
         :return: True
         """
         save_path = utils.determine_model_path(save_path, mode)
-        super(BERT4RecModel, self).save(save_path)
+        self.bert_model.save(save_path)
 
         if tokenizer:
             tokenizer.export_vocab_to_file(save_path.joinpath(_TOKENIZER_VOCAB_FILE_NAME))
@@ -99,7 +143,10 @@ class BERT4RecModel(tf.keras.Model):
 
         return True
 
-    def rank(self, encoder_input: Union[list, tf.Tensor], rank_items: list, sequence_indexes: tf.Tensor = None):
+    def rank(self,
+             encoder_input: dict,
+             rank_items: list,
+             sequence_indexes: Union[list, tf.Tensor] = None) -> tuple:
         """
         Ranks a given set of potential items (rank_items) by probability based on the given sequence.
         The items to be ranked should actually be the indexes of the items to gather their embeddings
@@ -118,11 +165,14 @@ class BERT4RecModel(tf.keras.Model):
         the accumulated encoder output (pooled_output). Could legitimately be the masked language model
         (or simply the positions of the masked tokens).
         :return: A tuple with the first value containing the ranked items from highest probability to lowest
-        and the second value containing the probabilities (not sorted!)
+        and the second value containing the probabilities (of each item) (not sorted! -> can be cross referenced
+        with the original rank_items list)
         """
-        gathered_embeddings = tf.gather(self.encoder.get_embedding_table(), rank_items)
+        # TODO: save and reload model correctly (i.e. reloading the model into the right class again to make
+        # functions available (as e.g. encoder.get_embedding_table()))
+        gathered_embeddings = tf.gather(self.bert_model.encoder._embedding_layer.embeddings, rank_items)
 
-        encoder_output = self(encoder_input)
+        encoder_output = self.bert_model(encoder_input)
 
         probabilities = list()
         rankings = list()
@@ -144,35 +194,49 @@ class BERT4RecModel(tf.keras.Model):
 
         return rankings, probabilities
 
-    def update_meta(self, updated_info: dict):
+    def get_meta(self) -> dict:
+        return self._meta_config
+
+    def update_meta(self, updated_info: dict) -> True:
         self._meta_config.update(updated_info)
+        return True
+
+    def delete_keys_from_meta(self, keys: Union[list, str]) -> True:
+        if isinstance(keys, str):
+            keys = [keys]
+
+        for key in keys:
+            self._meta_config.pop(key, None)
+
+        return True
 
 
 if __name__ == "__main__":
     dataloader = BERT4RecML1MDataloader()
-    #dataloader.generate_vocab()
+    dataloader.generate_vocab()
     ds = dataloader.preprocess_dataset()
     for element in ds.take(1):
         example = element
-    #tokenizer = dataloader.get_tokenizer()
+    print(example)
+    tokenizer = dataloader.get_tokenizer()
 
-    model = BERT4RecModel(vocab_size=30522)
+    bert_encoder = networks.BertEncoder(30522)
+    model = BERTModel(bert_encoder)
     model.compile(optimizer="adam", loss="mse")
-    #embedding_table = model.encoder.get_embedding_table()
-    #gathered_embeddings = tf.gather(embedding_table, [0, 3, 30519, 30521])
-    #print(gathered_embeddings)
-    #print(model.get_config())
-    #model.save(pathlib.Path("my_model"), tokenizer)
-    #loaded_assets = BERT4RecModel.load(pathlib.Path("my_model"))
-    #loaded_tokenizer = loaded_assets["tokenizer"]
-    #model = loaded_assets["model"]
-    #print(model.encoder.get_embedding_table())
+    _ = model(model.inputs)
+    wrapper = BERT4RecModelWrapper(model)
+    embedding_table = model.encoder._embedding_layer.embeddings
+    gathered_embeddings = tf.gather(embedding_table, [0, 3, 30519, 30521])
 
-    #predictions = model(example)
-    #print(predictions)
-    #print(loaded_model.summary())
+    wrapper.save(pathlib.Path("my_model"), tokenizer)
+    loaded_assets = BERT4RecModelWrapper.load(pathlib.Path("my_model"))
+    loaded_tokenizer = loaded_assets["tokenizer"]
+    loaded_wrapper = loaded_assets["model"]
+
+    predictions = model(example)
+    print(predictions)
 
     rank_items = [random.randint(0, 30522) for _ in range(5)]
-    rankings, probabilities = model.rank(example, rank_items, example["masked_lm_positions"])
+    rankings, probabilities = wrapper.rank(example, rank_items, example["masked_lm_positions"])
     print(rank_items)
     print(rankings)
