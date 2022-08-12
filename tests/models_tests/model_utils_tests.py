@@ -4,7 +4,8 @@ import random
 import tensorflow as tf
 
 from bert4rec.dataloaders import BERT4RecDataloader
-from bert4rec.model import BERT4RecModel
+from bert4rec.model import BERTModel
+from bert4rec.model.components import networks
 import bert4rec.model.model_utils as utils
 import tests.test_utils as test_utils
 
@@ -21,7 +22,8 @@ class ModelUtilsTests(tf.test.TestCase):
         return BERT4RecDataloader()
 
     def _build_model(self, vocab_size: int):
-        return BERT4RecModel(vocab_size=vocab_size)
+        bert_encoder = networks.BertEncoder(vocab_size=vocab_size)
+        return BERTModel(bert_encoder)
 
     def test_determine_model_path(self):
         path = pathlib.Path(".")
@@ -49,6 +51,13 @@ class ModelUtilsTests(tf.test.TestCase):
                          f"original path added to it. "
                          f"Expected last path element: {dir_name}, "
                          f"Actual last path element: {determined_path_2.stem}")
+
+        absolute_path = path.absolute()
+        determined_absolute_path = utils.determine_model_path(absolute_path, 1)
+        self.assertEqual(absolute_path, determined_absolute_path,
+                         f"Determining the model path if an absolute path is given should always return "
+                         f"the given absolute path without any modifications. "
+                         f"Expected path: {absolute_path}. Actual path: {determined_absolute_path}")
 
     def test_rank_items(self):
         vocab_size = 500
