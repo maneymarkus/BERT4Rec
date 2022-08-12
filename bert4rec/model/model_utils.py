@@ -4,7 +4,7 @@ import tensorflow as tf
 from bert4rec.utils import utils
 
 
-def determine_model_path(path: pathlib.Path, mode: int) -> pathlib.Path:
+def determine_model_path(path: pathlib.Path, mode: int = 0) -> pathlib.Path:
     """
     Determines the path for loading or storing a ml model depending on the given mode.
 
@@ -15,6 +15,9 @@ def determine_model_path(path: pathlib.Path, mode: int) -> pathlib.Path:
     Modes 0 and 1 also use predefined directories (saved_models).
     :return:
     """
+    if path.is_absolute():
+        return path
+
     if mode == 0:
         # path relative to project root
         determined_path = utils.get_project_root()\
