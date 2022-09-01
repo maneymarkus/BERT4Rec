@@ -167,9 +167,33 @@ def split_dataset(ds: tf.data.Dataset,
     return train_ds, val_ds, test_ds
 
 
-def make_batches(dataset: tf.data.Dataset, buffer_size: int = 2000, batch_size: int = 64):
+def make_batches(dataset: tf.data.Dataset,
+                 buffer_size: int = 2000,
+                 batch_size: int = 64,
+                 squeeze_tensors: bool = True):
+    """
+    Combines consecutive elements of the given dataset into batches. Tensors may be squeezed if wanted,
+    to prevent elements of the batched dataset to have a shape of [batch_size, 1, tokens].
+
+    :param dataset: The dataset that should be batched
+    :param buffer_size: The buffer size for the shuffle.
+    See: https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
+    :param batch_size: The size of the batches to be generated.
+    See: https://www.tensorflow.org/api_docs/python/tf/data/Dataset#batch
+    :param squeeze_tensors: Determines if the tensor elements of this dataset should be squeezed (reduce
+    the dimensions). Tensors can only be squeezed, if they have an "empty" dimension (e.g. a shape
+    like this: [x, 1, y] has a middle empty dimension that can possibly be removed). Empty dimension might
+    occur due to preprocessing.
+    :return:
+    """
+    def squeeze_func(d: dict):
+        for key, tensor in d.items():
+            d[key] = tf.squeeze(tensor)
+        return d
+
     return dataset \
-        .cache() \
         .shuffle(buffer_size) \
-        .batch(batch_size) \
+        .batch(batch_size, num_parallel_calls=tf.data.AUTOTUNE) \
+        .map(lambda d: squeeze_func(d) if squeeze_tensors else d) \
+        .cache() \
         .prefetch(tf.data.AUTOTUNE)
