@@ -5,7 +5,7 @@ from bert4rec.tokenizers.base_tokenizer import BaseTokenizer
 
 
 class BaseDataloader(abc.ABC):
-    def __int__(self, tokenizer: BaseTokenizer):
+    def __int__(self, tokenizer: BaseTokenizer = None):
         self.tokenizer = tokenizer
 
     def get_tokenizer(self):
