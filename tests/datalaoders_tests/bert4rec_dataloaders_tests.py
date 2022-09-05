@@ -6,9 +6,13 @@ import tensorflow as tf
 from bert4rec.dataloaders import get_dataloader_factory
 from bert4rec.dataloaders import BERT4RecDataloader, BERT4RecML1MDataloader, BERT4RecML20MDataloader, \
     BERT4RecIMDBDataloader, BERT4RecRedditDataloader
+import tests.test_utils as utils
 
 
 class BaseBERT4RecDataloaderTests(abc.ABC):
+    def __init__(self):
+        self.dataloader = None
+
     def instantiate_dataloader(self, dataset: str):
         dataloader_factory = get_dataloader_factory("bert4rec")
         if dataset == "ml1m":
@@ -95,6 +99,34 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
                               f"An item of this preprocessed dataset from this particular dataloader should be"
                               f"a dict but is an instance of: {type(ds_item_values)}")
         return ds_item_values
+
+    def test_prepare_inference(self):
+        general_dataloader = BERT4RecDataloader()
+        # sequence is longer than maximum sequence length of ML model. If it works in this case it will work in
+        # other cases too
+        sequence = utils.generate_unique_word_list(size=140)
+        preprocessed_sequence = general_dataloader.prepare_inference(sequence)
+        # get the numpy value lists without any batches
+        labels = preprocessed_sequence["labels"].numpy()[-1].tolist()
+        input_word_ids = preprocessed_sequence["input_word_ids"].numpy()[-1].tolist()
+        masked_lm_ids = preprocessed_sequence["masked_lm_ids"].numpy()[-1].tolist()
+        masked_lm_weights = preprocessed_sequence["masked_lm_weights"].numpy()[-1].tolist()
+        masked_lm_positions = preprocessed_sequence["masked_lm_positions"].numpy()[-1].tolist()
+        print(preprocessed_sequence)
+        self.assertListEqual(labels, input_word_ids,
+                             f"The labels and input_word_ids tensors (or their values) should be equal, since the"
+                             f"masking token (in the last place is a 'ground truth' label."
+                             f"Label tensor values: {labels}. Input_word_ids tensor values: {input_word_ids}")
+        self.assertListEqual(masked_lm_ids, [0],
+                             f"The masked_lm_ids array should be equal to the {[0]} list, because the ground truth "
+                             f"data for this particular token is a [PAD] token (0) as we don't know the actual "
+                             f"value (since we're currently trying to infer it). But it actually is: {masked_lm_ids}")
+        self.assertListEqual(masked_lm_weights, [1],
+                             f"The masked_lm_weights array should be equal to the {[1]} list, but actually is: "
+                             f"{masked_lm_weights}")
+        self.assertEqual(len(masked_lm_positions), 1,
+                         f"The length of the masked_lm_positions array should be 1 (as there is only one masked "
+                         f"token at the end, but actually is: {len(masked_lm_positions)}")
 
 
 class BERT4RecML1MDataloaderTests(BaseBERT4RecDataloaderTests, BERT4RecDataloaderTests):
