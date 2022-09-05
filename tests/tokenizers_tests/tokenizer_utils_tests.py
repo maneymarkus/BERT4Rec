@@ -37,8 +37,8 @@ class TokenizerUtilsTest(tf.test.TestCase):
 
         path = pathlib.Path(tmp.name)
         result = tokenizer_utils.export_num_vocab_to_file(path, vocab)
-        self.assertEqual(result, True,
-                         f"The export function should return True on success.")
+        self.assertTrue(result,
+                        f"The export function should return True on success.")
 
         random_indexes = [random.randint(0, vocab_size - 1) for _ in range(round(vocab_size * 0.25))]
         random_indexes.sort()
