@@ -26,7 +26,6 @@ class BERT4RecDataloader(BaseDataloader):
         # BERT4Rec works with simple tokenizer
         if tokenizer is None:
             tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
-
         self.tokenizer = tokenizer
 
         self._PAD_TOKEN = "[PAD]"
@@ -75,14 +74,15 @@ class BERT4RecDataloader(BaseDataloader):
         :param x: In this case depicts the user
         :param sequence: Depicts the sequence of items the user `x` interacted with
         :param apply_mlm: Determines, whether to apply the masked language model or not
-        :param finetuning: Determines, whether to apply finetuning preprocessing or not
+        :param finetuning: Determines, whether to apply finetuning preprocessing or not (mask only the last
+        item in a sequence). Does not have an effect when apply_mlm param is set to false.
         :return: A dictionary with the model inputs as well as a single additional entry for the original "labels"
         (this is the state of the tokenized input sequence before applying the masking language model)
         """
         # initiate return dictionary
         processed_features = dict()
 
-        # Expand rank by 1 if rank of dataset tensor is only 1
+        # Expand rank by 1 if rank of dataset tensor is only 1 (necessary for e.g. trimming)
         if tf.equal(tf.rank(sequence), tf.constant([1])):
             sequence = tf.expand_dims(sequence, 0)
 
@@ -228,8 +228,47 @@ class BERT4RecDataloader(BaseDataloader):
 
         return processed_features
 
+    def prepare_inference(self, sequence: list[str]):
+        """
+        Prepares input (a sequence = a list of strings = the history) for inference (adds a masked token
+        to the end of the sequence to predict this token)
+
+        :param sequence:
+        :return:
+        """
+
+        # if sequence is longer than max_seq_length - 2 ([CLS] token is always added to the beginning) than
+        # already trim manually to be able to append the masked token at the end without it being cut off.
+        # HINT: remove elements from beginning since we want to have the most recent history to "predict the future"
+        while len(sequence) > self._MAX_SEQ_LENGTH - 2:
+            sequence.pop(0)
+
+        # add [MASK] token to end of sequence
+        sequence.append(self._MASK_TOKEN)
+
+        preprocessed_sequence = self.feature_preprocessing(None, sequence, False, False)
+
+        # actually the masked_lm_ids happen to be None or undefined as we actually want to predict the future
+        # so there is literally no ground truth value but the 0 token (pad token) works as a placeholder
+        masked_lm_ids = tf.ragged.constant([[0]], dtype=tf.int64)
+        masked_lm_weights = tf.ragged.constant([[1]], dtype=tf.int64)
+        masked_lm_positions = tf.ragged.constant([[len(sequence)]], dtype=tf.int64)
+
+        preprocessed_sequence["masked_lm_ids"] = masked_lm_ids
+        preprocessed_sequence["masked_lm_weights"] = masked_lm_weights
+        preprocessed_sequence["masked_lm_positions"] = masked_lm_positions
+
+        return preprocessed_sequence
+
 
 class BERT4RecML1MDataloader(BERT4RecDataloader):
+    def __init__(self,
+                 tokenizer: BaseTokenizer = None,
+                 max_predictions_per_batch: int = 5,
+                 max_seq_length: int = 128):
+
+        super(BERT4RecML1MDataloader, self).__init__(tokenizer, max_predictions_per_batch, max_seq_length)
+        
     @property
     def dataset_code(self):
         return "ml_1m"
@@ -253,6 +292,13 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
 
 
 class BERT4RecML20MDataloader(BERT4RecDataloader):
+    def __init__(self,
+                 tokenizer: BaseTokenizer = None,
+                 max_predictions_per_batch: int = 5,
+                 max_seq_length: int = 128):
+
+        super(BERT4RecML20MDataloader, self).__init__(tokenizer, max_predictions_per_batch, max_seq_length)
+
     @property
     def dataset_code(self):
         return "ml_20m"
@@ -276,6 +322,13 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
 
 
 class BERT4RecIMDBDataloader(BERT4RecDataloader):
+    def __init__(self,
+                 tokenizer: BaseTokenizer = None,
+                 max_predictions_per_batch: int = 5,
+                 max_seq_length: int = 128):
+
+        super(BERT4RecIMDBDataloader, self).__init__(tokenizer, max_predictions_per_batch, max_seq_length)
+
     @property
     def dataset_code(self):
         return "imdb"
@@ -290,6 +343,13 @@ class BERT4RecIMDBDataloader(BERT4RecDataloader):
 
 
 class BERT4RecRedditDataloader(BERT4RecDataloader):
+    def __init__(self,
+                 tokenizer: BaseTokenizer = None,
+                 max_predictions_per_batch: int = 5,
+                 max_seq_length: int = 128):
+
+        super(BERT4RecRedditDataloader, self).__init__(tokenizer, max_predictions_per_batch, max_seq_length)
+
     @property
     def dataset_code(self):
         return "reddit"
@@ -312,9 +372,12 @@ if __name__ == "__main__":
     ds = dataloader.load_data()
     prepared_ds = dataloader.preprocess_dataset(ds, True, False)
     test_data = tf.ragged.constant([[random.choice(string.ascii_letters) for _ in range(25)]])
-    logging.debug(test_data)
+    #logging.debug(test_data)
     model_input = dataloader.feature_preprocessing(None, test_data, True)
-    logging.debug(model_input)
+    #logging.debug(model_input)
     tensor = model_input["input_word_ids"]
-    detokenized = tokenizer.detokenize(tensor, ["[PAD]"])
-    print(detokenized)
+    detokenized = tokenizer.detokenize(tensor, [dataloader._PAD_TOKEN])
+    #print(detokenized)
+    batched_ds = utils.make_batches(prepared_ds, buffer_size=100)
+    for b in batched_ds.take(1):
+        print(b)
