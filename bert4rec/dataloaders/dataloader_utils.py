@@ -3,7 +3,6 @@ This file contains basic utility function concerning dataloaders, like e.g. cont
 """
 
 from absl import logging
-import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_text as tf_text
