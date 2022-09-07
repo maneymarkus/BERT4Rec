@@ -135,7 +135,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
         # 'hidden_size'.
         self._embedding_projection = None
         if embedding_width != hidden_size:
-            self._embedding_projection = tf.keras.layers.experimental.EinsumDense(
+            self._embedding_projection = tf.keras.layers.EinsumDense(
                 '...x,xy->...y',
                 output_shape=hidden_size,
                 bias_axes='y',
@@ -427,7 +427,7 @@ class BertEncoder(tf.keras.Model):
         # We project the 'embedding' output to 'hidden_size' if it is not already
         # 'hidden_size'.
         if embedding_width != hidden_size:
-            embedding_projection = tf.keras.layers.experimental.EinsumDense(
+            embedding_projection = tf.keras.layers.EinsumDense(
                 '...x,xy->...y',
                 output_shape=hidden_size,
                 bias_axes='y',
