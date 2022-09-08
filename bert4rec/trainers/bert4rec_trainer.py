@@ -1,5 +1,4 @@
 import pathlib
-
 import tensorflow as tf
 
 from bert4rec.trainers.base_trainer import BaseTrainer
@@ -19,6 +18,7 @@ class BERT4RecTrainer(BaseTrainer):
             optimizer_factory = get_optimizer_factory("bert4rec")
             # use default values if no other optimizer is provided
             optimizer = optimizer_factory.create_adam_w_optimizer()
+        self.optimizer = optimizer
 
         if loss is None:
             loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
@@ -35,9 +35,24 @@ class BERT4RecTrainer(BaseTrainer):
     def train(self,
               train_ds: tf.data.Dataset,
               val_ds: tf.data.Dataset,
-              checkpoint_path: pathlib.Path,
+              checkpoint_path: pathlib.Path = None,
               epochs: int = 50):
-        history = self.model.fit(x=train_ds, validation_data=val_ds, epochs=epochs, callbacks=self.callbacks)
+
+        if checkpoint_path:
+            model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+                filepath=checkpoint_path,
+                save_weights_only=True,
+                monitor="val_sparse_categorical_accuracy",
+                save_best_only=True
+            )
+            self.append_callback(model_checkpoint_callback)
+            if checkpoint_path.exists():
+                self.model.load_weights(checkpoint_path)
+
+        history = self.model.fit(x=train_ds,
+                                 validation_data=val_ds,
+                                 epochs=epochs,
+                                 callbacks=self.callbacks)
         return history
 
     def validate(self):
