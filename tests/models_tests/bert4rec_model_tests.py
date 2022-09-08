@@ -1,7 +1,7 @@
 from absl import logging
-import os
 import pathlib
 import random
+import string
 import tempfile
 import tensorflow as tf
 
@@ -10,6 +10,7 @@ from bert4rec.model.bert4rec_model import BERTModel, BERT4RecModelWrapper, \
     _META_CONFIG_FILE_NAME, _TOKENIZER_VOCAB_FILE_NAME
 from bert4rec.model.components import networks
 from bert4rec.tokenizers import SimpleTokenizer
+from bert4rec.trainers import optimizers
 import tests.test_utils as utils
 
 
@@ -19,9 +20,15 @@ class BERT4RecModelTests(tf.test.TestCase):
         super(BERT4RecModelTests, self).setUp()
         logging.set_verbosity(logging.DEBUG)
         self.vocab_size = 300
+        optimizer_factory = optimizers.get_optimizer_factory("bert4rec")
+        self.optimizer = optimizer_factory.create_adam_w_optimizer()
+
         self.encoder = networks.BertEncoder(self.vocab_size)
         self.bert_model = BERTModel(self.encoder)
-        # NOTE: Model is not compiled yet. The weights aren't initialized either.
+        self.bert_model.compile(
+            optimizer=self.optimizer,
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        )
         self.bert4rec_wrapper = BERT4RecModelWrapper(self.bert_model)
 
     def tearDown(self):
@@ -33,9 +40,18 @@ class BERT4RecModelTests(tf.test.TestCase):
     def test_load_model(self):
         tmpdir = tempfile.TemporaryDirectory()
         save_path = pathlib.Path(tmpdir.name)
-        # makes sure the weights are built (note: the model is not compiled yet; weights are necessary for saving
-        # compilation info not)
+
         _ = self.bert_model(self.bert_model.inputs)
+
+        # should throw an error when trying to save a not fully initialized model
+        with self.assertRaises(RuntimeError):
+            self.bert4rec_wrapper.save(save_path)
+
+        # initialize model fully by building the loss
+        random_sequence = [random.choice(string.ascii_letters) for _ in range(100)]
+        dataloader = BERT4RecDataloader()
+        inputs = dataloader.feature_preprocessing(None, random_sequence)
+        self.bert_model.train_step(inputs)
 
         self.bert4rec_wrapper.save(save_path)
 
