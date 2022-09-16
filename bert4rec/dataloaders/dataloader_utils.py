@@ -3,9 +3,17 @@ This file contains basic utility function concerning dataloaders, like e.g. cont
 """
 
 from absl import logging
+import collections
 import pandas as pd
 import tensorflow as tf
 import tensorflow_text as tf_text
+
+
+def rank_items_by_popularity(items: list) -> list:
+    sorted_item_list = sorted(items, key=collections.Counter(items).get, reverse=True)
+    # remove duplicates
+    sorted_items_list = list(dict.fromkeys(sorted_item_list))
+    return sorted_items_list
 
 
 def convert_df_to_ds(df: pd.DataFrame, datatypes: list[str] = None):
