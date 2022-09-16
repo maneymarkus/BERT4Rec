@@ -147,7 +147,8 @@ def split_dataset(ds: tf.data.Dataset,
                   val_split: float = 0.1,
                   test_split: float = 0.1,
                   shuffle: bool = True,
-                  shuffle_size: int = 10000) -> tuple[tf.data.Dataset, tf.data.Dataset, tf.data.Dataset]:
+                  shuffle_size: int = 10000,
+                  seed: int = 12) -> tuple[tf.data.Dataset, tf.data.Dataset, tf.data.Dataset]:
     if (train_split + test_split + val_split) != 1:
         raise ValueError("The dataset can only be split in parts that sum up to 1 or a 100%.")
 
@@ -162,7 +163,7 @@ def split_dataset(ds: tf.data.Dataset,
 
     if shuffle:
         # Specify seed to always have the same split distribution between runs
-        ds = ds.shuffle(shuffle_size, seed=12)
+        ds = ds.shuffle(shuffle_size, seed=seed)
 
     train_size = int(train_split * ds_size)
     val_size = int(val_split * ds_size)
@@ -189,7 +190,7 @@ def make_batches(dataset: tf.data.Dataset,
     See: https://www.tensorflow.org/api_docs/python/tf/data/Dataset#batch
     :param squeeze_tensors: Determines if the tensor elements of this dataset should be squeezed (reduce
     the dimensions). Tensors can only be squeezed, if they have an "empty" dimension (e.g. a shape
-    like this: [x, 1, y] has a middle empty dimension that can possibly be removed). Empty dimension might
+    like this: [x, 1, y] has an empty middle dimension that can possibly be removed). Empty dimensions might
     occur due to preprocessing.
     :return:
     """
