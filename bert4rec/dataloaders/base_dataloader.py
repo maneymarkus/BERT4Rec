@@ -44,3 +44,7 @@ class BaseDataloader(abc.ABC):
         :return: True
         """
         pass
+
+    @abc.abstractmethod
+    def create_popular_item_ranking(self) -> list:
+        pass

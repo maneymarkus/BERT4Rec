@@ -54,6 +54,9 @@ class BERT4RecDataloader(BaseDataloader):
     def generate_vocab(self) -> True:
         pass
 
+    def create_popular_item_ranking(self) -> list:
+        pass
+
     def preprocess_dataset(self, ds: tf.data.Dataset = None, apply_mlm: bool = True, finetuning: bool = False) \
             -> tf.data.Dataset:
         if ds is None:
@@ -290,6 +293,13 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
         _ = self.tokenizer.tokenize(vocab)
         return True
 
+    def create_popular_item_ranking(self) -> list:
+        df = ml_1m.load_ml_1m()
+        item_list = df["movie_name"].to_list()
+        sorted_item_list = utils.rank_items_by_popularity(item_list)
+        tokenized_sorted_item_list = self.tokenizer.tokenize(sorted_item_list)
+        return tokenized_sorted_item_list
+
 
 class BERT4RecML20MDataloader(BERT4RecDataloader):
     def __init__(self,
@@ -320,6 +330,13 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
         _ = self.tokenizer.tokenize(vocab)
         return True
 
+    def create_popular_item_ranking(self) -> list:
+        df = ml_20m.load_ml_20m()
+        item_list = df["movie_name"].to_list()
+        sorted_item_list = utils.rank_items_by_popularity(item_list)
+        tokenized_sorted_item_list = self.tokenizer.tokenize(sorted_item_list)
+        return tokenized_sorted_item_list
+
 
 class BERT4RecIMDBDataloader(BERT4RecDataloader):
     def __init__(self,
@@ -340,6 +357,9 @@ class BERT4RecIMDBDataloader(BERT4RecDataloader):
     def generate_vocab(self) -> True:
         raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
+
+    def create_popular_item_ranking(self) -> list:
+        pass
 
 
 class BERT4RecRedditDataloader(BERT4RecDataloader):
@@ -362,6 +382,9 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
     def generate_vocab(self) -> True:
         raise NotImplementedError("The Reddit dataset is not yet implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
+
+    def create_popular_item_ranking(self) -> list:
+        pass
 
 
 if __name__ == "__main__":
