@@ -19,6 +19,10 @@ import datasets.reddit as reddit
 
 
 class BERT4RecDataloader(BaseDataloader):
+    """
+    This class is not abstract as it may be instantiated for e.g. feature preprocessing without a specific
+    dataset
+    """
     def __init__(self,
                  tokenizer: BaseTokenizer = None,
                  max_predictions_per_batch: int = 5,
@@ -92,54 +96,35 @@ class BERT4RecDataloader(BaseDataloader):
         # tokenize segments (the segments have to be in a list, in order to apply the content trimming!)
         segments = [self.tokenizer.tokenize(sequence)]
 
-        # truncate inputs to a maximum length
-        _, trimmed_segments = utils.trim_content(self._MAX_SEQ_LENGTH, segments)
+        # truncate inputs to a maximum length (-2 because start and end tokens are added)
+        _, trimmed_segments = utils.trim_content(self._MAX_SEQ_LENGTH - 2, segments)
 
         # combine segments, get segment ids and add special tokens (i.e. start and end tokens)
-        segments_combined, segment_ids = tf_text.combine_segments(
+        prepared_segments, segment_ids = tf_text.combine_segments(
             trimmed_segments,
             start_of_sequence_id=self._START_TOKEN_ID,
             end_of_segment_id=self._END_TOKEN_ID
         )
 
-        labels = copy.copy(segments_combined)
-
-        # prepare and pad combined segment inputs
-        input_word_ids, input_mask = tf_text.pad_model_inputs(
-            segments_combined,
-            max_seq_length=self._MAX_SEQ_LENGTH
-        )
-        input_type_ids, _ = tf_text.pad_model_inputs(
-            segments_combined,
-            max_seq_length=self._MAX_SEQ_LENGTH
-        )
+        labels = copy.copy(prepared_segments)
 
         # apply dynamic masking task
         if apply_mlm:
             if not finetuning:
-                _, _, masked_token_ids, masked_lm_positions, masked_lm_ids = utils.apply_dynamic_masking_task(
-                    segments_combined,
+                # prepared segments is the masked_token_ids tensor (so with the mlm applied)
+                _, _, prepared_segments, masked_lm_positions, masked_lm_ids = utils.apply_dynamic_masking_task(
+                    prepared_segments,
                     self._MAX_PREDICTIONS_PER_BATCH,
                     self._MASK_TOKEN_ID,
                     [self._START_TOKEN_ID, self._END_TOKEN_ID, self._UNK_TOKEN_ID, self._PAD_TOKEN_ID],
                     self.tokenizer.get_vocab_size())
             else:
                 # only mask the last token (before the [SEP] token)
-                tensor_values = segments_combined.numpy()[-1]
+                tensor_values = prepared_segments.numpy()[-1]
                 masked_lm_ids = tf.ragged.constant([[tensor_values[-2]]], dtype=tf.int64)
                 tensor_values[-2] = self._MASK_TOKEN_ID
-                masked_token_ids = tf.ragged.constant([tensor_values], dtype=tf.int64)
+                prepared_segments = tf.ragged.constant([tensor_values], dtype=tf.int64)
                 masked_lm_positions = tf.ragged.constant([[(len(tensor_values) - 2)]], dtype=tf.int64)
-
-            # prepare and pad masked and combined segments
-            input_word_ids, input_mask = tf_text.pad_model_inputs(
-                masked_token_ids,
-                max_seq_length=self._MAX_SEQ_LENGTH
-            )
-            input_type_ids, _ = tf_text.pad_model_inputs(
-                masked_token_ids,
-                max_seq_length=self._MAX_SEQ_LENGTH
-            )
 
             # prepare and pad masking task inputs
             masked_lm_positions, masked_lm_weights = tf_text.pad_model_inputs(
@@ -155,12 +140,23 @@ class BERT4RecDataloader(BaseDataloader):
             processed_features["masked_lm_positions"] = masked_lm_positions
             processed_features["masked_lm_weights"] = masked_lm_weights
 
+        # prepare and pad combined segment inputs
+        input_word_ids, input_mask = tf_text.pad_model_inputs(
+            prepared_segments,
+            max_seq_length=self._MAX_SEQ_LENGTH
+        )
+        input_type_ids, _ = tf_text.pad_model_inputs(
+            prepared_segments,
+            max_seq_length=self._MAX_SEQ_LENGTH
+        )
+
         # pad labels
         labels, _ = tf_text.pad_model_inputs(
             labels,
             max_seq_length=self._MAX_SEQ_LENGTH
         )
 
+        processed_features["user_id"] = x
         processed_features["labels"] = labels
         processed_features["input_word_ids"] = input_word_ids
         processed_features["input_mask"] = input_mask
