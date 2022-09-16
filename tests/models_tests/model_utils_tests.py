@@ -62,6 +62,8 @@ class ModelUtilsTests(tf.test.TestCase):
     def test_rank_items(self):
         vocab_size = 500
         model = self._build_model(vocab_size)
+        # initialize weights
+        _ = model(model.inputs)
         dataloader = self._instantiate_dataloader()
 
         random_sequence = test_utils.generate_unique_word_list(size=50)
@@ -82,6 +84,20 @@ class ModelUtilsTests(tf.test.TestCase):
                                                             random_rank_items)
             probabilities.append(vocab_probabilities)
             rankings.append(ranking)
+
+            correct_ranking_indexes = tf.argsort(vocab_probabilities, direction="DESCENDING")
+            correct_ranking = tf.gather(random_rank_items, correct_ranking_indexes)
+            highest_ranked_item = correct_ranking[0].numpy()
+            lowest_ranked_item = correct_ranking[len(correct_ranking) - 1].numpy()
+
+            self.assertEqual(ranking[0].numpy(), highest_ranked_item,
+                             f"The item with the highest probability ({highest_ranked_item}) should actually be "
+                             f"the first item in the ranking list, but the first item is: {ranking[0]}")
+
+            self.assertEqual(ranking[len(ranking) - 1].numpy(), lowest_ranked_item,
+                             f"The item with the lowest probability ({lowest_ranked_item}) should actually be "
+                             f"the last item in the ranking list, but the last item is: "
+                             f"{ranking[len(ranking) - 1]}")
 
         self.assertEqual(len(probabilities), len(encoder_input["masked_lm_positions"][0]),
                          f"The length of the generated probabilities list should have the same length as "

@@ -166,27 +166,56 @@ class BERT4RecModelTests(tf.test.TestCase):
 
         encoder_input = dataloader.feature_preprocessing(None, sequence)
 
-        rank_items = [random.randint(0, self.vocab_size) for _ in range(number_rank_items)]
+        # initialize weights
+        _ = self.bert_model(self.bert_model.inputs)
 
-        rankings, probabilities = self.bert4rec_wrapper.rank(encoder_input,
-                                                             rank_items,
-                                                             encoder_input["masked_lm_positions"])
-        self.assertEqual(len(rankings), len(probabilities),
-                         f"The length of the ranking list ({len(rankings)}) should be equal to the "
-                         f"probabilities list length ({len(probabilities)})")
-        self.assertEqual(len(rankings), len(encoder_input["masked_lm_positions"][0]),
+        # use just one generic item list for ranking for all masked tokens
+        rank_items_1 = [random.randint(0, self.vocab_size) for _ in range(number_rank_items)]
+
+        rankings_1, probabilities_1 = self.bert4rec_wrapper.rank(encoder_input,
+                                                                 rank_items_1,
+                                                                 encoder_input["masked_lm_positions"])
+
+        self.assertEqual(len(rankings_1[0]), len(probabilities_1[0]),
+                         f"The length of the ranking list ({len(rankings_1[0])}) should be equal to the "
+                         f"probabilities list length ({len(probabilities_1[0])})")
+        self.assertEqual(len(rankings_1[0]), len(encoder_input["masked_lm_positions"][0]),
                          f"The amount of individual rankings should be equal to the amount of masked_lm_positions "
-                         f"({len(encoder_input['masked_lm_positions'][0])}) but received {len(rankings)} "
+                         f"({len(encoder_input['masked_lm_positions'][0])}) but received {len(rankings_1)} "
                          f"individual rankings.")
-        ranking = random.choice(rankings)
-        probability = random.choice(probabilities)
+        ranking = random.choice(rankings_1[0])
+        probability = random.choice(probabilities_1[0])
         self.assertEqual(len(ranking), len(probability),
                          f"An individual ranking should have the same amount of items as the respective probability "
                          f"distribution ({len(probability)}) but actually has: {len(ranking)}")
         self.assertEqual(len(ranking), number_rank_items,
                          f"An individual ranking should have as many items as the original rank_items list "
-                         f"({len(rank_items)}) but actually has: {len(ranking)}")
-        self.assertAllInSet(ranking, set(rank_items))
+                         f"({len(rank_items_1)}) but actually has: {len(ranking)}")
+        self.assertAllInSet(ranking, set(rank_items_1))
+
+        # use individual ranking lists for each token -> shape of rank_items list: (batch, tokens, rank_items)
+        rank_items_2 = [
+            [
+                [random.randint(0, self.vocab_size) for _ in range(random.randint(3, 10))]
+                for _ in range(len(encoder_input["masked_lm_positions"][0]))
+            ]
+        ]
+
+        rankings_2, probabilities_2 = self.bert4rec_wrapper.rank(encoder_input,
+                                                                 rank_items_2,
+                                                                 encoder_input["masked_lm_positions"])
+
+        # iterate over batches
+        for b in range(len(rankings_2)):
+            # iterate over tokens
+            for i, token_idx in enumerate(rankings_2[b]):
+                self.assertEqual(len(rankings_2[b][i]), len(probabilities_2[b][i]),
+                                 f"The length of an individual ranking list ({len(rankings_2[b][i])}) should be "
+                                 f"equal to the probabilities list length ({len(probabilities_2[b][i])})")
+                self.assertEqual(len(rankings_2[b][i]), len(rank_items_2[b][i]),
+                                 f"The length of an individual ranking list ({len(rankings_2[b][i])}) should be "
+                                 f"equal to the corresponding original (unranked) items list ("
+                                 f"{len(rank_items_2[b][i])})")
 
     def test_update_meta(self):
         new_entries = {
