@@ -58,7 +58,7 @@ def rank_items(logits: tf.Tensor, embeddings: tf.Tensor, items: list):
 
     vocab_logits = tf.einsum("n,nm->m", logits, tf.transpose(embeddings))
     vocab_probabilities = tf.nn.softmax(vocab_logits)
-    sorted_indexes = tf.argsort(vocab_probabilities)
+    sorted_indexes = tf.argsort(vocab_probabilities, direction="DESCENDING")
     ranking = tf.gather(items, sorted_indexes)
     return vocab_probabilities, ranking
 
