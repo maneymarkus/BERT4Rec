@@ -1,3 +1,4 @@
+import json
 import pathlib
 import tensorflow as tf
 
@@ -61,6 +62,23 @@ def rank_items(logits: tf.Tensor, embeddings: tf.Tensor, items: list):
     sorted_indexes = tf.argsort(vocab_probabilities, direction="DESCENDING")
     ranking = tf.gather(items, sorted_indexes)
     return vocab_probabilities, ranking
+
+
+def load_config(save_path: pathlib.Path) -> dict:
+    """
+    Loads a json config into a python dict. To use the dict as a parameter in a function call instead
+    of positional parameters make use of the double asteriks (**)
+
+    :param save_path:
+    :return:
+    """
+    if not save_path.is_file():
+        raise FileNotFoundError(f"No config file exists at given path: {save_path}")
+
+    with open(save_path, "r") as jf:
+        config = json.load(jf)
+
+    return config
 
 
 if __name__ == "__main__":
