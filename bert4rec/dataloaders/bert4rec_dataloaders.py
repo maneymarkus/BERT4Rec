@@ -274,6 +274,7 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
 
     def load_data(self) -> tf.data.Dataset:
         df = ml_1m.load_ml_1m()
+        df = df.sort_values(by="timestamp")
         df = df.groupby("uid")
         user_grouped_df = pd.DataFrame(columns=["uid", "movies_sequence"])
         for user, u_data in df:
@@ -311,6 +312,7 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
 
     def load_data(self) -> tf.data.Dataset:
         df = ml_20m.load_ml_20m()
+        df = df.sort_values(by="timestamp")
         df = df.groupby("uid")
         user_grouped_df = pd.DataFrame(columns=["uid", "movies_sequence"])
         for user, u_data in df:
