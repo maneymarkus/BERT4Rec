@@ -119,9 +119,32 @@ class BERTModel(tf.keras.Model):
 
             loss = self.compiled_loss(y_true, y_pred, regularization_losses=self.losses)
 
-        gradients = tape.gradient(loss, self.trainable_variables)
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(loss, trainable_vars)
 
-        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+
+        self.compiled_metrics.update_state(y_true, y_pred)
+
+        return {m.name: m.result() for m in self.metrics}
+
+    @tf.function(input_signature=train_step_signature)
+    def test_step(self, inputs):
+        """
+        Custom train_step function to alter standard training behaviour
+
+        :return:
+        """
+        y_true = inputs["masked_lm_ids"]
+
+        encoder_output = self(inputs, training=False)
+        sequence_output = encoder_output["sequence_output"]
+        masked_token_sequence = tf.gather(sequence_output, inputs["masked_lm_positions"], axis=1, batch_dims=1)
+        # logits
+        y_pred = tf.linalg.matmul(masked_token_sequence,
+                                  self.encoder._embedding_layer.embeddings, transpose_b=True)
+
+        loss = self.compiled_loss(y_true, y_pred, regularization_losses=self.losses)
 
         self.compiled_metrics.update_state(y_true, y_pred)
 
