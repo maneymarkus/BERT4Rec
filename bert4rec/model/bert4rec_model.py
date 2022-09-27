@@ -192,7 +192,17 @@ class BERT4RecModelWrapper:
         loaded_bert = tf.keras.models.load_model(save_path, custom_objects={
             "BERTModel": BERTModel,
             "AdamWeightDecay": optimizers.AdamWeightDecay,
-
+            "WarmUp": optimizers.WarmUp,
+            "BertEncoderV2": networks.BertEncoder,
+            "_approx_gelu": networks.bert_encoder._approx_gelu,
+            "OnDeviceEmbedding": layers.OnDeviceEmbedding,
+            "PositionEmbedding": layers.PositionEmbedding,
+            "SelfAttentionMask": layers.SelfAttentionMask,
+            "TransformerEncoderBlock": layers.TransformerEncoderBlock,
+            "RelativePositionEmbedding": layers.RelativePositionEmbedding,
+            "RelativePositionBias": layers.RelativePositionBias,
+            "_relative_position_bucket": layers.position_embedding._relative_position_bucket,
+            "get_mask": layers.self_attention_mask.get_mask,
         })
         wrapper = cls(loaded_bert)
         loaded_assets["model"] = wrapper
@@ -257,10 +267,11 @@ class BERT4RecModelWrapper:
         :param encoder_input: The input to the encoder on which the ranking of the rank_items is based on.
         Should be the regular BERT input dictionary
         :param rank_items: Either list of indexes of the items which should be ranked (in case
-        sequence_indexes param is not given) or a list of lists with the indexes of the ranking items
-        (if sequence_indexes param is given). If this is a list of lists, the length of the primary list
-        should be equal to the length of the sequence_indexes as each index in either list corresponds to
-        the index of the other list. If none is given, the whole vocabulary (whole embedding table) is ranked.
+        sequence_indexes param is not given) or a list of lists of lists (shape: [batch, tokens, rank_items])
+        with the indexes of the ranking items (if sequence_indexes param is given). If this is a
+        list of lists of lists, the length of the primary list should be equal to the length of the
+        sequence_indexes as each index in either list corresponds to the index of the other list.
+        If none is given, the whole vocabulary (whole embedding table) is ranked.
         :param sequence_indexes: A list of integers determining the output positions
         which should be used to (individually) rank the items (based on the corresponding output
         of the sequence_output from the encoder). If none is given, the items are ranked based on
@@ -274,7 +285,7 @@ class BERT4RecModelWrapper:
         # functions available (as e.g. encoder.get_embedding_table()))
         gathered_embeddings = self.bert_model.encoder._embedding_layer.embeddings
 
-        if rank_items is not None:
+        if rank_items is not None and type(rank_items[0]) is not list:
             gathered_embeddings = tf.gather(self.bert_model.encoder._embedding_layer.embeddings, rank_items)
 
         encoder_output = self.bert_model(encoder_input)
@@ -283,14 +294,26 @@ class BERT4RecModelWrapper:
         rankings = list()
         if sequence_indexes is not None:
             sequence_output = encoder_output["sequence_output"]
-            # iterate over the given sequence_indexes: should be in the shape of [batch, num_tokens] with batch = 1
-            # since it's a specific task
-            batch = 0
-            for token_index in sequence_indexes[batch]:
-                token_logits = sequence_output[batch, token_index, :]
-                vocab_probabilities, ranking = utils.rank_items(token_logits, gathered_embeddings, rank_items)
-                probabilities.append(vocab_probabilities)
-                rankings.append(ranking)
+            # iterate over batch
+            for b in range(len(sequence_indexes)):
+                batch_rankings = []
+                batch_probabilities = []
+
+                # iterate over tokens in this tensor
+                for i, token_index in enumerate(sequence_indexes[b]):
+                    rank_items_list = rank_items
+                    if rank_items is not None and type(rank_items[0]) is list:
+                        # => individual ranking list for each token (output)
+                        gathered_embeddings = \
+                            tf.gather(self.bert_model.encoder._embedding_layer.embeddings, rank_items[b][i])
+                        rank_items_list = rank_items[b][i]
+                    token_logits = sequence_output[b, token_index, :]
+                    vocab_probabilities, ranking = utils.rank_items(token_logits, gathered_embeddings, rank_items_list)
+                    batch_probabilities.append(vocab_probabilities)
+                    batch_rankings.append(ranking)
+                rankings.append(batch_rankings)
+                probabilities.append(batch_probabilities)
+
         else:
             output_logits = encoder_output["pooled_output"][0, :]
             vocab_probabilities, ranking = utils.rank_items(output_logits, gathered_embeddings, rank_items)
