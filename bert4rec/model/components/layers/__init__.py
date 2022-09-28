@@ -1,3 +1,4 @@
+from bert4rec.model.components.layers.masked_lm import MaskedLM
 from bert4rec.model.components.layers.on_device_embedding import OnDeviceEmbedding
 from bert4rec.model.components.layers.position_embedding import PositionEmbedding
 from bert4rec.model.components.layers.position_embedding import RelativePositionBias
