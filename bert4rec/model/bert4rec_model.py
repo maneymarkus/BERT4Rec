@@ -1,12 +1,10 @@
 from absl import logging
-import collections
 import copy
 import json
 import pathlib
 import random
-import string
 import tensorflow as tf
-from typing import Union
+from typing import Union, Optional
 
 from bert4rec.dataloaders.bert4rec_dataloaders import BERT4RecDataloader, BERT4RecML1MDataloader
 import bert4rec.dataloaders.dataloader_utils as dataloader_utils
@@ -48,21 +46,45 @@ class BERTModel(tf.keras.Model):
     """
     def __init__(self,
                  encoder: networks.BertEncoder,
+                 customized_masked_lm: Optional[tf.keras.layers.Layer] = None,
+                 mlm_activation=None,
+                 mlm_initializer="glorot_uniform",
                  name: str = "bert",
                  **kwargs):
 
         super(BERTModel, self).__init__(name=name, **kwargs)
 
-        inputs = copy.copy(encoder.inputs)
-
         self._config = {
             "encoder": encoder,
+            "customized_masked_lm": customized_masked_lm,
+            "mlm_activation": mlm_activation,
+            "mlm_initializer": mlm_initializer,
             "name": name,
         }
 
         self.encoder = encoder
-        self.inputs = inputs
         self.vocab_size = encoder.get_config()["vocab_size"]
+
+        _ = self.encoder(self.encoder.inputs)
+
+        inputs = copy.copy(encoder.inputs)
+
+        self.masked_lm = customized_masked_lm or layers.MaskedLM(
+            self.encoder._embedding_layer.embeddings,
+            activation=mlm_activation,
+            initializer=mlm_initializer,
+            name="cls/predictions"
+        )
+
+        masked_lm_positions = tf.keras.layers.Input(
+            shape=(None,), name="masked_lm_positions", dtype=tf.int32
+        )
+        if isinstance(inputs, dict):
+            inputs["masked_lm_positions"] = masked_lm_positions
+        else:
+            inputs.append(masked_lm_positions)
+
+        self.inputs = inputs
 
     @property
     def code(self):
@@ -98,6 +120,12 @@ class BERTModel(tf.keras.Model):
             raise ValueError('encoder_network\'s output should be either a list '
                              'or a dict, but got %s' % encoder_network_outputs)
 
+        sequence_output = outputs["sequence_output"]
+        # Inference may not have masked_lm_positions and mlm_logits are not needed
+        if "masked_lm_positions" in inputs:
+            masked_lm_positions = inputs["masked_lm_positions"]
+            outputs["mlm_logits"] = self.masked_lm(sequence_output, masked_lm_positions)
+
         return outputs
 
     @tf.function(input_signature=train_step_signature)
@@ -111,11 +139,7 @@ class BERTModel(tf.keras.Model):
 
         with tf.GradientTape() as tape:
             encoder_output = self(inputs, training=True)
-            sequence_output = encoder_output["sequence_output"]
-            masked_token_sequence = tf.gather(sequence_output, inputs["masked_lm_positions"], axis=1, batch_dims=1)
-            # logits
-            y_pred = tf.linalg.matmul(masked_token_sequence,
-                                      self.encoder._embedding_layer.embeddings, transpose_b=True)
+            y_pred = encoder_output["mlm_logits"]
 
             loss = self.compiled_loss(y_true, y_pred, regularization_losses=self.losses)
 
@@ -138,11 +162,8 @@ class BERTModel(tf.keras.Model):
         y_true = inputs["masked_lm_ids"]
 
         encoder_output = self(inputs, training=False)
-        sequence_output = encoder_output["sequence_output"]
-        masked_token_sequence = tf.gather(sequence_output, inputs["masked_lm_positions"], axis=1, batch_dims=1)
         # logits
-        y_pred = tf.linalg.matmul(masked_token_sequence,
-                                  self.encoder._embedding_layer.embeddings, transpose_b=True)
+        y_pred = encoder_output["mlm_logits"]
 
         loss = self.compiled_loss(y_true, y_pred, regularization_losses=self.losses)
 
@@ -357,7 +378,8 @@ if __name__ == "__main__":
     gathered_embeddings = tf.gather(embedding_table, [0, 3, 30519, 30521])
 
     predictions = model(example)
-    #print(predictions)
+    print(predictions)
+    exit()
 
     # See model docs to understand, why this is necessary
     model.train_step(example)
