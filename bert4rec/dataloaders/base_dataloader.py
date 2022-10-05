@@ -17,11 +17,20 @@ class BaseDataloader(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def load_data(self) -> tf.data.Dataset:
+    def load_data_into_ds(self) -> tf.data.Dataset:
         """
         Load data into a tf.data.Dataset object
 
-        :return:
+        :return: A (unprocessed) dataset object from the loaded sources
+        """
+        pass
+
+    @abc.abstractmethod
+    def load_data_into_split_ds(self) -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
+        """
+        Loads data and already splits them in three separate tf.data.Dataset objects (train, validation and test)
+
+        :return: Up to three (unprocessed) dataset objects from the loaded sources
         """
         pass
 
