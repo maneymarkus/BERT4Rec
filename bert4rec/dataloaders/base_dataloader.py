@@ -29,9 +29,20 @@ class BaseDataloader(abc.ABC):
     def preprocess_dataset(self, ds: tf.data.Dataset = None) -> tf.data.Dataset:
         """
         Preprocesses the dataset to prepare it for usage with the model. Param `ds` is optional as each
-        dataloader is only responsible for a single dataset and therefore only ever loads one dataset
+        dataloader is only responsible for a single dataset and therefore only ever loads and preprocesses one dataset
 
         :param ds: The dataset that should be preprocessed
+        :return: The preprocessed dataset
+        """
+        pass
+
+    @abc.abstractmethod
+    def prepare_training(self):
+        """
+        Prepares the represented dataset completely for training. This includes generating the vocab
+        for the tokenizer, splitting the dataset into train, validation and test parts, preparing parts
+        of the training data for finetuning, making batches,
+
         :return:
         """
         pass
