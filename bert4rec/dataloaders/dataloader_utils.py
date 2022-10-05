@@ -7,6 +7,7 @@ import collections
 import pandas as pd
 import tensorflow as tf
 import tensorflow_text as tf_text
+import tqdm
 
 
 def rank_items_by_popularity(items: list) -> list:
@@ -46,6 +47,54 @@ def convert_df_to_ds(df: pd.DataFrame, datatypes: list[str] = None):
         ds = tf.data.Dataset.zip((ds, part_ds))
         c_index += 1
     return ds
+
+
+def split_sequence_df(df: pd.DataFrame, group_by_column: str, sequence_column: str) \
+        -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+    """
+    Splits a given dataframe with sequence data in three dataframes (for training, validation and testing).
+    It is assumed that the first column contains the user and the second column contains the
+    item sequence. The split is always done the same: The first n-2 elements will be used for training, the
+    first n-1 elements will be used for validation and the whole sequence will be used for testing
+
+    :param df: A pd.Dataframe object with
+    :param group_by_column: The key of the column to group by
+    :param sequence_column: The key of the column that will contain the sequence data of interest
+    :return:
+    """
+    if group_by_column not in df.columns:
+        raise ValueError(f"Group column key {group_by_column} is not present in columns "
+                         f"in dataframe: {df.columns}")
+
+    if sequence_column not in df.columns:
+        raise ValueError(f"Sequence column key {sequence_column} is not present in columns "
+                         f"in dataframe: {df.columns}")
+
+    sequence_df_columns = [group_by_column, sequence_column]
+    grouped_df = df.groupby(group_by_column)
+    train_df = pd.DataFrame(columns=sequence_df_columns)
+    val_df = pd.DataFrame(columns=sequence_df_columns)
+    test_df = pd.DataFrame(columns=sequence_df_columns)
+
+    # iterate over groups in grouped_df
+    for group, group_data in tqdm.tqdm(grouped_df):
+        sequence = group_data[sequence_column].to_list()
+        # take all elements for train before checking if there are enough elements to split this sequence
+        group_train_row = [group, sequence]
+        if len(sequence) >= 3:
+            # for train take the first n-2 elements
+            group_train_row = [group, sequence[:-2]]
+            # for validation take the first n-1 elements
+            group_val_row = [group, sequence[:-1]]
+            # for testing take all the elements
+            group_test_row = [group, sequence]
+
+            val_df.loc[len(val_df)] = group_val_row
+            test_df.loc[len(test_df)] = group_test_row
+
+        train_df.loc[len(train_df)] = group_train_row
+
+    return train_df, val_df, test_df
 
 
 def convert_column_to_ds(column: pd.Series, datatype: str = None):
