@@ -67,7 +67,7 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         if not hasattr(self, "dataloader"):
             return
 
-        ds = self.dataloader.load_data()
+        ds = self.dataloader.load_data_into_ds()
         self.assertIsInstance(ds, tf.data.Dataset,
                               f"The loaded and returned dataset should be an instance of the tf.data.Dataset class "
                               f"but is an instance of: {type(ds)}")
@@ -264,7 +264,7 @@ class BERT4RecIMDBDataloaderTests(BaseBERT4RecDataloaderTests, BERT4RecDataloade
     def test_load_data(self):
         # This method of this dataloader is expected to raise an error still
         with self.assertRaises(NotImplementedError):
-            self.dataloader.load_data()
+            self.dataloader.load_data_into_ds()
 
     def test_generate_vocab(self):
         # This method of this dataloader is expected to raise an error still
@@ -304,7 +304,7 @@ class BERT4RecRedditDataloaderTests(BaseBERT4RecDataloaderTests, BERT4RecDataloa
     def test_load_data(self):
         # This method of this dataloader is expected to raise an error still
         with self.assertRaises(NotImplementedError):
-            self.dataloader.load_data()
+            self.dataloader.load_data_into_ds()
 
     def test_generate_vocab(self):
         # This method of this dataloader is expected to raise an error still
