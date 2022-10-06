@@ -1,4 +1,6 @@
 import abc
+import pathlib
+
 from absl import logging
 import copy
 import functools
@@ -23,10 +25,15 @@ class BERT4RecDataloader(BaseDataloader):
     This class is not abstract as it may be instantiated for e.g. feature preprocessing without a specific
     dataset
     """
+
     def __init__(self,
-                 tokenizer: BaseTokenizer = None,
-                 max_predictions_per_batch: int = 5,
-                 max_seq_length: int = 128):
+                 max_seq_len: int,
+                 max_predictions_per_seq: int,
+                 masked_lm_prob: float = 0.2,
+                 mask_token_rate: float = 1.0,
+                 random_token_rate: float = 0.0,
+                 input_duplication_factor: int = 1,
+                 tokenizer: BaseTokenizer = None):
         # BERT4Rec works with simple tokenizer
         if tokenizer is None:
             tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
@@ -46,14 +53,27 @@ class BERT4RecDataloader(BaseDataloader):
         self._UNK_TOKEN_ID = self.tokenizer.tokenize(self._UNK_TOKEN)
         self._SPECIAL_TOKENS = [self._PAD_TOKEN, self._UNK_TOKEN, self._MASK_TOKEN, self._RANDOM_TOKEN,
                                 self._START_TOKEN, self._END_TOKEN]
-        self._MAX_PREDICTIONS_PER_BATCH = max_predictions_per_batch
-        self._MAX_SEQ_LENGTH = max_seq_length
+        self._MAX_PREDICTIONS_PER_SEQ = max_predictions_per_seq
+        self._MAX_SEQ_LENGTH = max_seq_len
+        self.masked_lm_prob = masked_lm_prob
+        self.mask_token_rate = mask_token_rate
+        self.random_token_rate = random_token_rate
+        self.input_duplication_factor = input_duplication_factor
 
     def dataset_code(self):
         pass
 
-    def load_data(self) -> tf.data.Dataset:
+    def load_data_into_ds(self) -> tf.data.Dataset:
         pass
+
+    def load_data_into_split_ds(self, duplication_factor: int = None) \
+            -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
+        if duplication_factor is None:
+            duplication_factor = self.input_duplication_factor
+
+        if duplication_factor < 1:
+            raise ValueError(f"A duplication factor of less than 1 (given: {duplication_factor}) "
+                             f"is not allowed!")
 
     def generate_vocab(self) -> True:
         pass
@@ -61,10 +81,36 @@ class BERT4RecDataloader(BaseDataloader):
     def create_popular_item_ranking(self) -> list:
         pass
 
-    def preprocess_dataset(self, ds: tf.data.Dataset = None, apply_mlm: bool = True, finetuning: bool = False) \
-            -> tf.data.Dataset:
+    def prepare_training(self):
+        train_ds, val_ds, test_ds = self.load_data_into_split_ds(duplication_factor=10)
+
+        train_ds, finetuning_train_ds, _ = utils.split_dataset(train_ds, val_split=0.2, test_split=0.0)
+        train_ds = self.preprocess_dataset(train_ds)
+        finetuning_train_ds = self.preprocess_dataset(finetuning_train_ds, finetuning=True)
+
+        full_train_ds = train_ds.concatenate(finetuning_train_ds)
+
+        val_ds = self.preprocess_dataset(val_ds, finetuning=True)
+        test_ds = self.preprocess_dataset(test_ds, finetuning=True)
+
+        return full_train_ds, val_ds, test_ds
+
+    def preprocess_dataset(self,
+                           ds: tf.data.Dataset = None,
+                           apply_mlm: bool = True,
+                           finetuning: bool = False) -> tf.data.Dataset:
+        """
+        Preprocesses a given or the represented dataset
+
+        :param ds: Given dataset to preprocess. Must have a similar format as the represented dataset or is the
+            represented dataset
+        :param apply_mlm: Whether to apply the masked language model preprocessing or not
+        :param finetuning: Whether to create some samples (10% of the dataset) preprocessed for finetuning (only the
+            last item is masked as specific training for the inference task later on)
+        :return:
+        """
         if ds is None:
-            ds = self.load_data()
+            ds = self.load_data_into_ds()
 
         prepared_ds = ds.map(functools.partial(self.ds_map_fn, apply_mlm, finetuning))
 
@@ -82,9 +128,9 @@ class BERT4RecDataloader(BaseDataloader):
         :param sequence: Depicts the sequence of items the user `x` interacted with
         :param apply_mlm: Determines, whether to apply the masked language model or not
         :param finetuning: Determines, whether to apply finetuning preprocessing or not (mask only the last
-        item in a sequence). Does not have an effect when apply_mlm param is set to false.
+            item in a sequence). Does not have an effect when apply_mlm param is set to false.
         :return: A dictionary with the model inputs as well as a single additional entry for the original "labels"
-        (this is the state of the tokenized input sequence before applying the masking language model)
+            (this is the state of the tokenized input sequence before applying the masking language model)
         """
         # initiate return dictionary
         processed_features = dict()
@@ -114,10 +160,13 @@ class BERT4RecDataloader(BaseDataloader):
                 # prepared segments is the masked_token_ids tensor (so with the mlm applied)
                 _, _, prepared_segments, masked_lm_positions, masked_lm_ids = utils.apply_dynamic_masking_task(
                     prepared_segments,
-                    self._MAX_PREDICTIONS_PER_BATCH,
+                    self._MAX_PREDICTIONS_PER_SEQ,
                     self._MASK_TOKEN_ID,
                     [self._START_TOKEN_ID, self._END_TOKEN_ID, self._UNK_TOKEN_ID, self._PAD_TOKEN_ID],
-                    self.tokenizer.get_vocab_size())
+                    self.tokenizer.get_vocab_size(),
+                    selection_rate=self.masked_lm_prob,
+                    mask_token_rate=self.mask_token_rate,
+                    random_token_rate=self.random_token_rate)
             else:
                 # only mask the last token (before the [SEP] token)
                 tensor_values = prepared_segments.numpy()[-1]
@@ -129,11 +178,11 @@ class BERT4RecDataloader(BaseDataloader):
             # prepare and pad masking task inputs
             masked_lm_positions, masked_lm_weights = tf_text.pad_model_inputs(
                 masked_lm_positions,
-                max_seq_length=self._MAX_PREDICTIONS_PER_BATCH
+                max_seq_length=self._MAX_PREDICTIONS_PER_SEQ
             )
             masked_lm_ids, _ = tf_text.pad_model_inputs(
                 masked_lm_ids,
-                max_seq_length=self._MAX_PREDICTIONS_PER_BATCH
+                max_seq_length=self._MAX_PREDICTIONS_PER_SEQ
             )
 
             processed_features["masked_lm_ids"] = masked_lm_ids
@@ -173,11 +222,12 @@ class BERT4RecDataloader(BaseDataloader):
         :param uid: User ID
         :param sequence: Sequence of items the user interacted with
         :param apply_mlm: Determines, whether to apply the masked language model or not
-        :param finetuning: Determines, whether to apply finetuning preprocessing or not
+        :param finetuning: Determines, whether to apply finetuning preprocessing to 10% of the entries or not
         :return: List of feature_preprocessing() return values (instead of dictionary)
         """
         model_inputs = self.feature_preprocessing(uid, sequence, apply_mlm, finetuning)
 
+        # detailed declaration to ensure correct positions
         processed_features_list = []
         processed_features_list.append(model_inputs["labels"])
         processed_features_list.append(model_inputs["input_word_ids"])
@@ -189,7 +239,6 @@ class BERT4RecDataloader(BaseDataloader):
             processed_features_list.append(model_inputs["masked_lm_positions"])
             processed_features_list.append(model_inputs["masked_lm_weights"])
 
-        # detailed declaration to ensure correct positions
         return processed_features_list
 
     def ds_map_fn(self, apply_mlm: bool, finetuning: bool, uid, sequence) -> dict:
@@ -199,7 +248,7 @@ class BERT4RecDataloader(BaseDataloader):
         :param uid: User ID
         :param sequence: Sequence of items the user interacted with
         :param apply_mlm: Determines, whether to apply the masked language model or not
-        :param finetuning: Determines, whether to apply finetuning preprocessing or not
+        :param finetuning: Determines, whether to apply finetuning preprocessing to 10% of the entries or not
         :return: Dictionary with the expected input values for the Transformer encoder
         """
         processed_features = dict()
@@ -247,32 +296,35 @@ class BERT4RecDataloader(BaseDataloader):
 
         preprocessed_sequence = self.feature_preprocessing(None, sequence, False, False)
 
-        # actually the masked_lm_ids happen to be None or undefined as we actually want to predict the future
-        # so there is literally no ground truth value but the 0 token (pad token) works as a placeholder
-        masked_lm_ids = tf.ragged.constant([[0]], dtype=tf.int64)
-        masked_lm_weights = tf.ragged.constant([[1]], dtype=tf.int64)
-        masked_lm_positions = tf.ragged.constant([[len(sequence)]], dtype=tf.int64)
-
-        preprocessed_sequence["masked_lm_ids"] = masked_lm_ids
-        preprocessed_sequence["masked_lm_weights"] = masked_lm_weights
-        preprocessed_sequence["masked_lm_positions"] = masked_lm_positions
+        # no masked lm applied here, as inference does not have a ground truth
 
         return preprocessed_sequence
 
 
 class BERT4RecML1MDataloader(BERT4RecDataloader):
     def __init__(self,
-                 tokenizer: BaseTokenizer = None,
-                 max_predictions_per_batch: int = 5,
-                 max_seq_length: int = 128):
+                 max_seq_len: int = 200,
+                 max_predictions_per_seq: int = 40,
+                 masked_lm_prob: float = 0.2,
+                 mask_token_rate: float = 1.0,
+                 random_token_rate: float = 0.0,
+                 input_duplication_factor: int = 1,
+                 tokenizer: BaseTokenizer = None):
 
-        super(BERT4RecML1MDataloader, self).__init__(tokenizer, max_predictions_per_batch, max_seq_length)
-        
+        super(BERT4RecML1MDataloader, self).__init__(
+            max_seq_len,
+            max_predictions_per_seq,
+            masked_lm_prob,
+            mask_token_rate,
+            random_token_rate,
+            input_duplication_factor,
+            tokenizer)
+
     @property
     def dataset_code(self):
         return "ml_1m"
 
-    def load_data(self) -> tf.data.Dataset:
+    def load_data_into_ds(self) -> tf.data.Dataset:
         df = ml_1m.load_ml_1m()
         df = df.sort_values(by="timestamp")
         df = df.groupby("uid")
@@ -283,6 +335,31 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
         datatypes = ["int64", "list"]
         ds = utils.convert_df_to_ds(user_grouped_df, datatypes)
         return ds
+
+    def load_data_into_split_ds(self, duplication_factor: int = None) \
+            -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
+        """
+        Loads the represented dataset into three separate tf.data.Dataset objects (for training, validation
+        and testing).
+
+        :param duplication_factor: Determines how many times the training data set should be repeated
+        to generate more samples
+        :return:
+        """
+        super(BERT4RecML1MDataloader, self).load_data_into_split_ds(duplication_factor)
+
+        df = ml_1m.load_ml_1m()
+        df = df.sort_values(by="timestamp")
+        train_df, val_df, test_df = utils.split_sequence_df(df, "uid", "movie_name")
+        datatypes = ["int64", "list"]
+        train_ds = utils.convert_df_to_ds(train_df, datatypes)
+        val_ds = utils.convert_df_to_ds(val_df, datatypes)
+        test_ds = utils.convert_df_to_ds(test_df, datatypes)
+
+        if duplication_factor > 1:
+            train_ds = train_ds.repeat(duplication_factor)
+
+        return train_ds, val_ds, test_ds
 
     def generate_vocab(self) -> True:
         df = ml_1m.load_ml_1m()
@@ -300,17 +377,28 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
 
 class BERT4RecML20MDataloader(BERT4RecDataloader):
     def __init__(self,
-                 tokenizer: BaseTokenizer = None,
-                 max_predictions_per_batch: int = 5,
-                 max_seq_length: int = 128):
+                 max_seq_len: int = 200,
+                 max_predictions_per_seq: int = 40,
+                 masked_lm_prob: float = 0.2,
+                 mask_token_rate: float = 1.0,
+                 random_token_rate: float = 0.0,
+                 input_duplication_factor: int = 1,
+                 tokenizer: BaseTokenizer = None):
 
-        super(BERT4RecML20MDataloader, self).__init__(tokenizer, max_predictions_per_batch, max_seq_length)
+        super(BERT4RecML20MDataloader, self).__init__(
+            max_seq_len,
+            max_predictions_per_seq,
+            masked_lm_prob,
+            mask_token_rate,
+            random_token_rate,
+            input_duplication_factor,
+            tokenizer)
 
     @property
     def dataset_code(self):
         return "ml_20m"
 
-    def load_data(self) -> tf.data.Dataset:
+    def load_data_into_ds(self) -> tf.data.Dataset:
         df = ml_20m.load_ml_20m()
         df = df.sort_values(by="timestamp")
         df = df.groupby("uid")
@@ -321,6 +409,31 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
         datatypes = ["int64", "list"]
         ds = utils.convert_df_to_ds(user_grouped_df, datatypes)
         return ds
+
+    def load_data_into_split_ds(self, duplication_factor: int = None) \
+            -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
+        """
+        Loads the represented dataset into three separate tf.data.Dataset objects (for training, validation
+        and testing).
+
+        :param duplication_factor: Determines how many times the training data set should be repeated
+        to generate more samples
+        :return:
+        """
+        super(BERT4RecML20MDataloader, self).load_data_into_split_ds(duplication_factor)
+
+        df = ml_1m.load_ml_1m()
+        df = df.sort_values(by="timestamp")
+        train_df, val_df, test_df = utils.split_sequence_df(df, "uid", "movie_name")
+        datatypes = ["int64", "list"]
+        train_ds = utils.convert_df_to_ds(train_df, datatypes)
+        val_ds = utils.convert_df_to_ds(val_df, datatypes)
+        test_ds = utils.convert_df_to_ds(test_df, datatypes)
+
+        if duplication_factor > 1:
+            train_ds = train_ds.repeat(duplication_factor)
+
+        return train_ds, val_ds, test_ds
 
     def generate_vocab(self) -> True:
         df = ml_20m.load_ml_20m()
@@ -338,17 +451,33 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
 
 class BERT4RecIMDBDataloader(BERT4RecDataloader):
     def __init__(self,
-                 tokenizer: BaseTokenizer = None,
-                 max_predictions_per_batch: int = 5,
-                 max_seq_length: int = 128):
+                 max_seq_len: int = 200,
+                 max_predictions_per_seq: int = 40,
+                 masked_lm_prob: float = 0.2,
+                 mask_token_rate: float = 1.0,
+                 random_token_rate: float = 0.0,
+                 input_duplication_factor: int = 1,
+                 tokenizer: BaseTokenizer = None):
 
-        super(BERT4RecIMDBDataloader, self).__init__(tokenizer, max_predictions_per_batch, max_seq_length)
+        super(BERT4RecIMDBDataloader, self).__init__(
+            max_seq_len,
+            max_predictions_per_seq,
+            masked_lm_prob,
+            mask_token_rate,
+            random_token_rate,
+            input_duplication_factor,
+            tokenizer)
 
     @property
     def dataset_code(self):
         return "imdb"
 
-    def load_data(self, apply_mlm: bool = True, finetuning: bool = False) -> tf.data.Dataset:
+    def load_data_into_ds(self) -> tf.data.Dataset:
+        raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
+                                  "with the BERT4Rec model.")
+
+    def load_data_into_split_ds(self, duplication_factor: int = None) \
+            -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
         raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
@@ -362,19 +491,35 @@ class BERT4RecIMDBDataloader(BERT4RecDataloader):
 
 class BERT4RecRedditDataloader(BERT4RecDataloader):
     def __init__(self,
-                 tokenizer: BaseTokenizer = None,
-                 max_predictions_per_batch: int = 5,
-                 max_seq_length: int = 128):
+                 max_seq_len: int = 200,
+                 max_predictions_per_seq: int = 40,
+                 masked_lm_prob: float = 0.2,
+                 mask_token_rate: float = 1.0,
+                 random_token_rate: float = 0.0,
+                 input_duplication_factor: int = 1,
+                 tokenizer: BaseTokenizer = None):
 
-        super(BERT4RecRedditDataloader, self).__init__(tokenizer, max_predictions_per_batch, max_seq_length)
+        super(BERT4RecRedditDataloader, self).__init__(
+            max_seq_len,
+            max_predictions_per_seq,
+            masked_lm_prob,
+            mask_token_rate,
+            random_token_rate,
+            input_duplication_factor,
+            tokenizer)
 
     @property
     def dataset_code(self):
         return "reddit"
 
-    def load_data(self, apply_mlm: bool = True, finetuning: bool = False) -> tf.data.Dataset:
+    def load_data_into_ds(self) -> tf.data.Dataset:
         # df = reddit.load_reddit()
         raise NotImplementedError("The Reddit dataset is not yet implemented to be utilised in conjunction "
+                                  "with the BERT4Rec model.")
+
+    def load_data_into_split_ds(self, duplication_factor: int = None) \
+            -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
+        raise NotImplementedError("The Reddit dataset is not (yet) implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
     def generate_vocab(self) -> True:
@@ -386,19 +531,42 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
 
 
 if __name__ == "__main__":
+    config_path = pathlib.Path("../../config/dataset_configs/ml_1m.json")
+    dataloader = BERT4RecML1MDataloader
+
+    exit()
+    max_num_tokens = 7
+    prop_sliding_window = 0.7
+    sliding_step = int(prop_sliding_window * max_num_tokens)
+    item_seq = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    beg_idx = range(len(item_seq) - max_num_tokens, 0, -sliding_step)
+    print(beg_idx)
+    user = [item_seq[i:i + max_num_tokens] for i in beg_idx[::-1]]
+
+    print(user)
+
+    exit()
     logging.set_verbosity(logging.DEBUG)
     dataloader = BERT4RecML1MDataloader()
+
+    train_ds, val_ds, test_ds = dataloader.prepare_training()
+    print(tf.data.experimental.cardinality(train_ds))
+    print(tf.data.experimental.cardinality(val_ds))
+    print(tf.data.experimental.cardinality(test_ds))
+    # train_ds.save("saved_data/dataset")
+
+    exit()
     dataloader.generate_vocab()
     tokenizer = dataloader.get_tokenizer()
-    ds = dataloader.load_data()
+    ds = dataloader.load_data_into_ds()
     prepared_ds = dataloader.preprocess_dataset(ds, True, False)
     test_data = tf.ragged.constant([[random.choice(string.ascii_letters) for _ in range(25)]])
-    #logging.debug(test_data)
+    # logging.debug(test_data)
     model_input = dataloader.feature_preprocessing(None, test_data, True)
-    #logging.debug(model_input)
+    # logging.debug(model_input)
     tensor = model_input["input_word_ids"]
     detokenized = tokenizer.detokenize(tensor, [dataloader._PAD_TOKEN])
-    #print(detokenized)
+    # print(detokenized)
     batched_ds = utils.make_batches(prepared_ds, buffer_size=100)
     for b in batched_ds.take(1):
         print(b)
