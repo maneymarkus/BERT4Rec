@@ -125,9 +125,9 @@ def convert_column_to_ds(column: pd.Series, datatype: str = None):
     return ds
 
 
-def trim_content(
-        max_seq_length: int,
-        content: list, trimmer=None) \
+def trim_content(max_seq_length: int,
+                 content: list,
+                 trimmer=None) \
         -> tuple[tf_text.RoundRobinTrimmer, list]:
     """
     Cut off `content` at given `max_seq_length` according to used `trimmer`. Unfortunately, the base trimmer
