@@ -271,7 +271,7 @@ def split_dataset(ds: tf.data.Dataset,
 
 
 def make_batches(dataset: tf.data.Dataset,
-                 buffer_size: int = 2000,
+                 buffer_size: int = None,
                  batch_size: int = 64,
                  squeeze_tensors: bool = False):
     """
@@ -293,6 +293,14 @@ def make_batches(dataset: tf.data.Dataset,
         for key, tensor in d.items():
             d[key] = tf.squeeze(tensor)
         return d
+
+    if buffer_size is None:
+        buffer_size = tf.data.experimental.cardinality(dataset)
+
+    if buffer_size == tf.data.experimental.UNKNOWN_CARDINALITY:
+        raise ValueError(f"Since the buffer size was not given it was tried to determine the cardinality (size) "
+                         f"of the dataset to use it as the buffer size. However, the size could not be "
+                         f"determined. Please provide a buffer size.")
 
     return dataset \
         .shuffle(buffer_size) \
