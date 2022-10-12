@@ -4,7 +4,9 @@ This file contains basic utility function concerning dataloaders, like e.g. cont
 
 from absl import logging
 import collections
+import numpy as np
 import pandas as pd
+import random
 import tensorflow as tf
 import tensorflow_text as tf_text
 import tqdm
@@ -77,6 +79,7 @@ def split_sequence_df(df: pd.DataFrame, group_by_column: str, sequence_column: s
     test_df = pd.DataFrame(columns=sequence_df_columns)
 
     # iterate over groups in grouped_df
+    logging.info("Split dataframe:")
     for group, group_data in tqdm.tqdm(grouped_df):
         sequence = group_data[sequence_column].to_list()
         # take all elements for train before checking if there are enough elements to split this sequence

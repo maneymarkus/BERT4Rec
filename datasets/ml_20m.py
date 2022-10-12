@@ -29,6 +29,7 @@ def load_ml_20m() -> pd.DataFrame:
     movies_file_path = download_dir.joinpath('movies.csv')
     movies_df = pd.read_csv(movies_file_path, header=0)
     movies_df.columns = ['sid', 'movie_name', 'categories']
+    logging.info("Merge dataframes")
     df = pd.merge(df, movies_df).progress_apply(lambda x: x)
     return df
 
