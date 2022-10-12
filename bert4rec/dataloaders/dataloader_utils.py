@@ -153,44 +153,87 @@ def trim_content(max_seq_length: int,
     return trimmer, trimmed_segments
 
 
-def apply_dynamic_masking_task(segments: tf.RaggedTensor,
-                               max_selections_per_batch: int,
+def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
+                               max_selections_per_seq: int,
                                mask_token_id: int,
                                special_token_ids: list[int],
                                vocab_size: int,
                                selection_rate: float = 0.2,
                                mask_token_rate: float = 0.8,
-                               random_token_rate: float = 0.1) \
-        -> tuple[
-            tf_text.RandomItemSelector, tf_text.MaskValuesChooser, tf.RaggedTensor, tf.RaggedTensor, tf.RaggedTensor]:
+                               random_token_rate: float = 0.1,
+                               seed: int = None) \
+        -> tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     """
     Applies dynamic masking task as described in https://arxiv.org/abs/1810.04805
-    with the help of tf_text.RandomItemSelector and tf_text.MaskValuesChooser
 
-    :param segments: tf.RaggedTensor containing the segments to be masked
-    :param max_selections_per_batch: Maximum amount of selections per batch to be masked
+    :param sequence_tensor: one dimensional tensor containing the (already tokenized) sequence
+        on which the mlm should be applied on
+    :param max_selections_per_seq: Maximum amount of selections per batch to be masked
     :param special_token_ids: Special tokens that shouldn't be selected as a masking target
-    and shouldn't be inserted as random tokens
+        and shouldn't be inserted as random tokens
     :param mask_token_id:
     :param vocab_size:
     :param selection_rate: Percentage of segments that should be selected for the masking task
     :param mask_token_rate: Percentage of selected segments that should be masked with the masking token
     :param random_token_rate: Percentage of selected segments that should be switched with a random token
-    :return:
+    :param seed: The seed for random operations
+    :return: tensor with the mlm applied
     """
-    random_selector = tf_text.RandomItemSelector(max_selections_per_batch=max_selections_per_batch,
-                                                 selection_rate=selection_rate,
-                                                 unselectable_ids=special_token_ids)
-    mask_values_chooser = tf_text.MaskValuesChooser(vocab_size=vocab_size,
-                                                    mask_token=mask_token_id,
-                                                    mask_token_rate=mask_token_rate,
-                                                    random_token_rate=random_token_rate)
-    masked_token_ids, masked_lm_positions, masked_lm_ids = tf_text.mask_language_model(
-        segments,
-        random_selector,
-        mask_values_chooser
+    sequence = sequence_tensor.numpy()
+    dtype = sequence_tensor.dtype
+
+    # set random seed for reproducibility
+    random.seed(seed)
+
+    # remove special tokens from sequence to calculate how many predictions can be inserted by applying the mlm
+    special_token_indexes = np.argwhere(np.isin(sequence, special_token_ids))
+    sequence_without_special_tokens = np.delete(sequence, special_token_indexes)
+
+    num_to_predict = min(
+        max_selections_per_seq,
+        max(
+            1, int(len(sequence_without_special_tokens) * selection_rate)
+        )
     )
-    return random_selector, mask_values_chooser, masked_token_ids, masked_lm_positions, masked_lm_ids
+
+    # generate selectable vocab for inserting random tokens in masked_lm
+    selectable_vocab = [i for i in range(vocab_size) if i not in special_token_ids]
+
+    # create a list of indexes (item positions) in the sequence that can possibly be masked
+    pos_indexes = [i for i, token in enumerate(sequence) if token not in special_token_ids]
+    random.shuffle(pos_indexes)
+    # only select num_to_predict from pos_indexes and sort again
+    pos_indexes = pos_indexes[:num_to_predict]
+    pos_indexes.sort()
+
+    masked_lm_ids = []
+    masked_lm_positions = []
+    masked_token_ids = sequence.copy()
+
+    for index in pos_indexes:
+        if len(masked_lm_ids) >= num_to_predict:
+            break
+
+        # keep original token in 1 - mask_token_rate + random_token_rate of the cases
+        replaced_token = sequence[index]
+        # masked language model
+        rn = random.random()
+        # insert random token at random_token_rate
+        if rn < mask_token_rate + random_token_rate:
+            replaced_token = random.choice(selectable_vocab)
+        # insert masked token at mask_token_rate
+        if rn < mask_token_rate:
+            replaced_token = mask_token_id
+
+        masked_token_ids[index] = replaced_token
+        masked_lm_ids.append(sequence[index])
+        masked_lm_positions.append(index)
+
+    masked_token_ids = tf.constant(masked_token_ids, dtype=dtype)
+    masked_lm_ids = tf.constant(masked_lm_ids, dtype=dtype)
+    masked_lm_positions = tf.constant(masked_lm_positions, dtype=dtype)
+
+    return masked_token_ids, masked_lm_positions, masked_lm_ids
 
 
 def split_dataset(ds: tf.data.Dataset,
