@@ -15,9 +15,9 @@ class BaseBERT4RecDataloaderTests(abc.ABC):
 
     def instantiate_dataloader(self, dataset: str):
         dataloader_factory = get_dataloader_factory("bert4rec")
-        if dataset == "ml1m":
+        if dataset == "ml_1m":
             self.dataloader = dataloader_factory.create_ml_1m_dataloader()
-        elif dataset == "ml20m":
+        elif dataset == "ml_20m":
             self.dataloader = dataloader_factory.create_ml_20m_dataloader()
         elif dataset == "imdb":
             self.dataloader = dataloader_factory.create_imdb_dataloader()
@@ -100,8 +100,33 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
                               f"a dict but is an instance of: {type(ds_item_values)}")
         return ds_item_values
 
+    def test_feature_preprocessing_without_masking(self):
+        general_dataloader = BERT4RecDataloader(10, 5)
+        string_sequence_long = utils.generate_unique_word_list(size=15)
+        processed_string_sequence_long = \
+            general_dataloader.feature_preprocessing(None, string_sequence_long, apply_mlm=False)
+        self.assertEqual(len(processed_string_sequence_long["input_word_ids"].numpy()), 10,
+                         "The length of a longer input sequence should be truncated to _MAX_SEQ_LENGTH "
+                         f"({general_dataloader._MAX_SEQ_LENGTH}) after calling `feature_processing()`, but "
+                         f"the actual length is: {len(processed_string_sequence_long['input_word_ids'].numpy())}")
+        string_sequence_short = utils.generate_unique_word_list(size=5)
+        processed_string_sequence_short = \
+            general_dataloader.feature_preprocessing(None, string_sequence_short, apply_mlm=False)
+        self.assertEqual(len(processed_string_sequence_short["input_word_ids"].numpy()), 10,
+                         "The length of a shorter input sequence should be extended (padded) to _MAX_SEQ_LENGTH "
+                         f"({general_dataloader._MAX_SEQ_LENGTH}) after calling `feature_processing()`, but "
+                         f"the actual length is: {len(processed_string_sequence_short['input_word_ids'].numpy())}")
+        self.assertEqual(processed_string_sequence_short["input_word_ids"].numpy()[0], 0,
+                         f"The first item of a originally shorter input sequence should be the pad token id "
+                         f"({general_dataloader._PAD_TOKEN_ID}) but actually is: "
+                         f"{processed_string_sequence_short['input_word_ids'].numpy()[0]}")
+        self.assertEqual(processed_string_sequence_short["input_word_ids"].numpy()[4], 0,
+                         f"The fifth item of a originally shorter input sequence should be the pad token id "
+                         f"({general_dataloader._PAD_TOKEN_ID}) but actually is: "
+                         f"{processed_string_sequence_short['input_word_ids'].numpy()[4]}")
+
     def test_prepare_inference(self):
-        general_dataloader = BERT4RecDataloader()
+        general_dataloader = BERT4RecDataloader(128, 5)
         # sequence is longer than maximum sequence length of ML model. If it works in this case it will work in
         # other cases too
         sequence = utils.generate_unique_word_list(size=140)
@@ -134,7 +159,7 @@ class BERT4RecML1MDataloaderTests(BaseBERT4RecDataloaderTests, BERT4RecDataloade
 
     def setUp(self):
         super(BERT4RecML1MDataloaderTests, self).setUp()
-        self.instantiate_dataloader("ml1m")
+        self.instantiate_dataloader("ml_1m")
 
     def tearDown(self):
         pass
@@ -192,7 +217,7 @@ class BERT4RecML20MDataloaderTests(BaseBERT4RecDataloaderTests, BERT4RecDataload
 
     def setUp(self):
         super(BERT4RecML20MDataloaderTests, self).setUp()
-        self.instantiate_dataloader("ml20m")
+        self.instantiate_dataloader("ml_20m")
 
     def tearDown(self):
         pass
