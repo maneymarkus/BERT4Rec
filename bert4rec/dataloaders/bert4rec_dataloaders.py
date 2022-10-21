@@ -1,6 +1,3 @@
-import abc
-import pathlib
-
 from absl import logging
 import copy
 import functools
@@ -8,7 +5,6 @@ import pandas as pd
 import random
 import string
 import tensorflow as tf
-import tensorflow_text as tf_text
 
 from bert4rec.dataloaders.base_dataloader import BaseDataloader
 from bert4rec.tokenizers import BaseTokenizer
@@ -32,7 +28,7 @@ class BERT4RecDataloader(BaseDataloader):
                  masked_lm_prob: float = 0.2,
                  mask_token_rate: float = 1.0,
                  random_token_rate: float = 0.0,
-                 input_duplication_factor: int = 1,
+                 input_duplication_factor: int = 10,
                  tokenizer: BaseTokenizer = None):
         # BERT4Rec works with simple tokenizer
         if tokenizer is None:
@@ -75,16 +71,23 @@ class BERT4RecDataloader(BaseDataloader):
             raise ValueError(f"A duplication factor of less than 1 (given: {duplication_factor}) "
                              f"is not allowed!")
 
-    def generate_vocab(self) -> True:
-        pass
+    def generate_vocab(self, source=None) -> True:
+        if source is None:
+            raise ValueError(f"Need a source to get the vocab from!")
+
+        _ = self.tokenizer.tokenize(source)
+        return True
 
     def create_popular_item_ranking(self) -> list:
         pass
 
     def prepare_training(self):
-        train_ds, val_ds, test_ds = self.load_data_into_split_ds(duplication_factor=10)
+        train_ds, val_ds, test_ds = self.load_data_into_split_ds(duplication_factor=self.input_duplication_factor)
 
-        train_ds, finetuning_train_ds, _ = utils.split_dataset(train_ds, val_split=0.2, test_split=0.0)
+        # make a small proportion of the dataset to have only the last item masked -> this works as finetuning
+        train_ds, finetuning_train_ds, _ = utils.split_dataset(
+            train_ds, train_split=0.9, val_split=0.1, test_split=0.0
+        )
         train_ds = self.preprocess_dataset(train_ds)
         finetuning_train_ds = self.preprocess_dataset(finetuning_train_ds, finetuning=True)
 
@@ -117,7 +120,7 @@ class BERT4RecDataloader(BaseDataloader):
         return prepared_ds
 
     def feature_preprocessing(self,
-                              x: tf.int64,
+                              x,
                               sequence: list[str],
                               apply_mlm: bool = True,
                               finetuning: bool = False) -> dict:
@@ -135,31 +138,39 @@ class BERT4RecDataloader(BaseDataloader):
         # initiate return dictionary
         processed_features = dict()
 
-        # Expand rank by 1 if rank of dataset tensor is only 1 (necessary for e.g. trimming)
-        if tf.equal(tf.rank(sequence), tf.constant([1])):
-            sequence = tf.expand_dims(sequence, 0)
+        segments = self.tokenizer.tokenize(sequence)
 
-        # tokenize segments (the segments have to be in a list, in order to apply the content trimming!)
-        segments = [self.tokenizer.tokenize(sequence)]
+        # Truncate inputs to a maximum length. If finetuning is applied, take only the most recent items.
+        # If sequence is actually shorter than the allowed length this expression will take the whole sequence
+        if finetuning or len(segments) <= self._MAX_SEQ_LENGTH:
+            segments = segments[-self._MAX_SEQ_LENGTH:]
+        else:
+            # If no finetuning is applied and the sequence is longer than _MAX_SEQ_LENGTH then take
+            # a sequence of length _MAX_SEQ_LENGTH starting from random index
+            start_i = random.randint(0, len(segments) - self._MAX_SEQ_LENGTH)
+            segments = segments[start_i:start_i + self._MAX_SEQ_LENGTH]
 
-        # truncate inputs to a maximum length (-2 because start and end tokens are added)
-        _, trimmed_segments = utils.trim_content(self._MAX_SEQ_LENGTH - 2, segments)
+        input_word_ids = tf.constant(segments, dtype=tf.int64)
+        # build input mask
+        input_mask = tf.ones_like(segments, dtype=tf.int64)
+        input_type_ids = tf.zeros_like(segments, dtype=tf.int64)
 
-        # combine segments, get segment ids and add special tokens (i.e. start and end tokens)
-        prepared_segments, segment_ids = tf_text.combine_segments(
-            trimmed_segments,
-            start_of_sequence_id=self._START_TOKEN_ID,
-            end_of_segment_id=self._END_TOKEN_ID
-        )
+        labels = copy.copy(input_word_ids)
 
-        labels = copy.copy(prepared_segments)
+        # pad combined segment inputs
+        if self._MAX_SEQ_LENGTH - input_word_ids.shape[0] > 0:
+            paddings = tf.constant([[self._MAX_SEQ_LENGTH - input_word_ids.shape[0], 0]])
+            input_word_ids = tf.pad(input_word_ids, paddings)
+            input_mask = tf.pad(input_mask, paddings)
+            input_type_ids = tf.pad(input_type_ids, paddings)
+            labels = tf.pad(labels, paddings)
 
         # apply dynamic masking task
         if apply_mlm:
             if not finetuning:
                 # prepared segments is the masked_token_ids tensor (so with the mlm applied)
-                _, _, prepared_segments, masked_lm_positions, masked_lm_ids = utils.apply_dynamic_masking_task(
-                    prepared_segments,
+                input_word_ids, masked_lm_positions, masked_lm_ids = utils.apply_dynamic_masking_task(
+                    input_word_ids,
                     self._MAX_PREDICTIONS_PER_SEQ,
                     self._MASK_TOKEN_ID,
                     [self._START_TOKEN_ID, self._END_TOKEN_ID, self._UNK_TOKEN_ID, self._PAD_TOKEN_ID],
@@ -168,42 +179,25 @@ class BERT4RecDataloader(BaseDataloader):
                     mask_token_rate=self.mask_token_rate,
                     random_token_rate=self.random_token_rate)
             else:
-                # only mask the last token (before the [SEP] token)
-                tensor_values = prepared_segments.numpy()[-1]
-                masked_lm_ids = tf.ragged.constant([[tensor_values[-2]]], dtype=tf.int64)
-                tensor_values[-2] = self._MASK_TOKEN_ID
-                prepared_segments = tf.ragged.constant([tensor_values], dtype=tf.int64)
-                masked_lm_positions = tf.ragged.constant([[(len(tensor_values) - 2)]], dtype=tf.int64)
+                # only mask the last token
+                tensor_values = input_word_ids.numpy()
+                masked_lm_ids = tf.constant([tensor_values[-1]], dtype=tf.int64)
+                tensor_values[-1] = self._MASK_TOKEN_ID
+                input_word_ids = tf.constant(tensor_values, dtype=tf.int64)
+                masked_lm_positions = tf.constant([(len(tensor_values) - 1)], dtype=tf.int64)
 
-            # prepare and pad masking task inputs
-            masked_lm_positions, masked_lm_weights = tf_text.pad_model_inputs(
-                masked_lm_positions,
-                max_seq_length=self._MAX_PREDICTIONS_PER_SEQ
-            )
-            masked_lm_ids, _ = tf_text.pad_model_inputs(
-                masked_lm_ids,
-                max_seq_length=self._MAX_PREDICTIONS_PER_SEQ
-            )
+            masked_lm_weights = tf.ones_like(masked_lm_ids)
+
+            # pad masked_lm inputs
+            if masked_lm_ids.shape[0] < self._MAX_PREDICTIONS_PER_SEQ:
+                paddings = tf.constant([[0, self._MAX_PREDICTIONS_PER_SEQ - masked_lm_ids.shape[0]]])
+                masked_lm_ids = tf.pad(masked_lm_ids, paddings)
+                masked_lm_positions = tf.pad(masked_lm_positions, paddings)
+                masked_lm_weights = tf.pad(masked_lm_weights, paddings)
 
             processed_features["masked_lm_ids"] = masked_lm_ids
             processed_features["masked_lm_positions"] = masked_lm_positions
             processed_features["masked_lm_weights"] = masked_lm_weights
-
-        # prepare and pad combined segment inputs
-        input_word_ids, input_mask = tf_text.pad_model_inputs(
-            prepared_segments,
-            max_seq_length=self._MAX_SEQ_LENGTH
-        )
-        input_type_ids, _ = tf_text.pad_model_inputs(
-            prepared_segments,
-            max_seq_length=self._MAX_SEQ_LENGTH
-        )
-
-        # pad labels
-        labels, _ = tf_text.pad_model_inputs(
-            labels,
-            max_seq_length=self._MAX_SEQ_LENGTH
-        )
 
         processed_features["user_id"] = x
         processed_features["labels"] = labels
@@ -285,11 +279,9 @@ class BERT4RecDataloader(BaseDataloader):
         :return:
         """
 
-        # if sequence is longer than max_seq_length - 2 ([CLS] token is always added to the beginning) than
-        # already trim manually to be able to append the masked token at the end without it being cut off.
+        # if sequence is longer than max_seq_length - 1 (be able to append mask token) trim it
         # HINT: remove elements from beginning since we want to have the most recent history to "predict the future"
-        while len(sequence) > self._MAX_SEQ_LENGTH - 2:
-            sequence.pop(0)
+        sequence = sequence[-self._MAX_SEQ_LENGTH + 1:]
 
         # add [MASK] token to end of sequence
         sequence.append(self._MASK_TOKEN)
@@ -361,11 +353,11 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
 
         return train_ds, val_ds, test_ds
 
-    def generate_vocab(self) -> True:
-        df = ml_1m.load_ml_1m()
-        vocab = set(df["movie_name"])
-        _ = self.tokenizer.tokenize(vocab)
-        return True
+    def generate_vocab(self, source=None) -> True:
+        if source is None:
+            df = ml_1m.load_ml_1m()
+            source = set(df["movie_name"])
+        super(BERT4RecML1MDataloader, self).generate_vocab(source)
 
     def create_popular_item_ranking(self) -> list:
         df = ml_1m.load_ml_1m()
@@ -435,11 +427,11 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
 
         return train_ds, val_ds, test_ds
 
-    def generate_vocab(self) -> True:
-        df = ml_20m.load_ml_20m()
-        vocab = set(df["movie_name"])
-        _ = self.tokenizer.tokenize(vocab)
-        return True
+    def generate_vocab(self, source=None) -> True:
+        if source is None:
+            df = ml_20m.load_ml_20m()
+            source = set(df["movie_name"])
+        super(BERT4RecML20MDataloader, self).generate_vocab(source)
 
     def create_popular_item_ranking(self) -> list:
         df = ml_20m.load_ml_20m()
@@ -458,7 +450,6 @@ class BERT4RecIMDBDataloader(BERT4RecDataloader):
                  random_token_rate: float = 0.0,
                  input_duplication_factor: int = 1,
                  tokenizer: BaseTokenizer = None):
-
         super(BERT4RecIMDBDataloader, self).__init__(
             max_seq_len,
             max_predictions_per_seq,
@@ -481,7 +472,7 @@ class BERT4RecIMDBDataloader(BERT4RecDataloader):
         raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
-    def generate_vocab(self) -> True:
+    def generate_vocab(self, source=None) -> True:
         raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
@@ -498,7 +489,6 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
                  random_token_rate: float = 0.0,
                  input_duplication_factor: int = 1,
                  tokenizer: BaseTokenizer = None):
-
         super(BERT4RecRedditDataloader, self).__init__(
             max_seq_len,
             max_predictions_per_seq,
@@ -522,7 +512,7 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
         raise NotImplementedError("The Reddit dataset is not (yet) implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
-    def generate_vocab(self) -> True:
+    def generate_vocab(self, source=None) -> True:
         raise NotImplementedError("The Reddit dataset is not yet implemented to be utilised in conjunction "
                                   "with the BERT4Rec model.")
 
@@ -531,21 +521,6 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
 
 
 if __name__ == "__main__":
-    config_path = pathlib.Path("../../config/dataset_configs/ml_1m.json")
-    dataloader = BERT4RecML1MDataloader
-
-    exit()
-    max_num_tokens = 7
-    prop_sliding_window = 0.7
-    sliding_step = int(prop_sliding_window * max_num_tokens)
-    item_seq = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    beg_idx = range(len(item_seq) - max_num_tokens, 0, -sliding_step)
-    print(beg_idx)
-    user = [item_seq[i:i + max_num_tokens] for i in beg_idx[::-1]]
-
-    print(user)
-
-    exit()
     logging.set_verbosity(logging.DEBUG)
     dataloader = BERT4RecML1MDataloader()
 
@@ -553,7 +528,11 @@ if __name__ == "__main__":
     print(tf.data.experimental.cardinality(train_ds))
     print(tf.data.experimental.cardinality(val_ds))
     print(tf.data.experimental.cardinality(test_ds))
+
+    train_batches = utils.make_batches(train_ds, buffer_size=tf.data.experimental.cardinality(train_ds))
     # train_ds.save("saved_data/dataset")
+    for t in train_batches.take(2):
+        print(t)
 
     exit()
     dataloader.generate_vocab()
