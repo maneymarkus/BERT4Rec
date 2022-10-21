@@ -1,3 +1,4 @@
+from bert4rec.evaluation.base_evaluator import BaseEvaluator
 from bert4rec.evaluation.bert4rec_evaluator import BERT4RecEvaluator
 
 
