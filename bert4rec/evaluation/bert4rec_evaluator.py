@@ -1,15 +1,13 @@
-import copy
 import numpy as np
-import random
 import tensorflow as tf
 
 from bert4rec.dataloaders import BaseDataloader
 from bert4rec.evaluation import evaluation_utils as utils
-from bert4rec.evaluation.base_evaluation import BaseEvaluation
+from bert4rec.evaluation.base_evaluator import BaseEvaluator
 from bert4rec.model import BERT4RecModelWrapper
 
 
-class BERT4RecEvaluator(BaseEvaluation):
+class BERT4RecEvaluator(BaseEvaluator):
     def __init__(self, sample_popular: bool = True):
         super().__init__(sample_popular)
         self.valid_ranks = 0
@@ -39,11 +37,20 @@ class BERT4RecEvaluator(BaseEvaluation):
             "ap": self.ap
         })
 
-    def evaluate(self, wrapper: BERT4RecModelWrapper, test_data: tf.data.Dataset, dataloader: BaseDataloader) -> dict:
-        pop_rank_items = dataloader.create_popular_item_ranking()
+    def evaluate(self, wrapper: BERT4RecModelWrapper,
+                 test_data: tf.data.Dataset,
+                 dataloader: BaseDataloader = None,
+                 popular_items_ranking: list[int] = None) -> dict:
+        
+        if popular_items_ranking is None and dataloader is None:
+            raise ValueError(f"Either one of the `dataloader` parameter or the `popular_item_ranking` parameter "
+                             f"has to be given.")
+
+        if popular_items_ranking is None:
+            popular_items_ranking = dataloader.create_popular_item_ranking()
         # iterate over the available batches
         for batch in test_data:
-            self.evaluate_batch(wrapper, batch, pop_rank_items)
+            self.evaluate_batch(wrapper, batch, popular_items_ranking)
 
         self.ndcg_1 = self.ndcg_1_count / self.valid_ranks
         self.hit_1 = self.hit_1_count / self.valid_ranks
