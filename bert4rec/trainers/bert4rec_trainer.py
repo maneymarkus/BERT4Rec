@@ -21,7 +21,9 @@ class BERT4RecTrainer(BaseTrainer):
         self.optimizer = optimizer
 
         if loss is None:
-            loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+            # Define loss function. Ignore class is set up to ignore "pad class". See:
+            # https://www.tensorflow.org/api_docs/python/tf/keras/losses/SparseCategoricalCrossentropy
+            loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, ignore_class=0)
         self.loss = loss
 
         if metrics is None:
