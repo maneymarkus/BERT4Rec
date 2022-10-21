@@ -41,7 +41,7 @@ class BERT4RecEvaluator(BaseEvaluator):
                  test_data: tf.data.Dataset,
                  dataloader: BaseDataloader = None,
                  popular_items_ranking: list[int] = None) -> dict:
-        
+
         if popular_items_ranking is None and dataloader is None:
             raise ValueError(f"Either one of the `dataloader` parameter or the `popular_item_ranking` parameter "
                              f"has to be given.")
@@ -84,19 +84,28 @@ class BERT4RecEvaluator(BaseEvaluator):
         """
         rank_item_lists_batch = []
         ground_truth_items_batch = []
+        selected_mlm_positions_batch = []
 
         # iterate over a single batch (containing the batched data)
-        for t_i, tensor in enumerate(test_batch["masked_lm_positions"]):
+        for t_i, masked_lm_positions in enumerate(test_batch["masked_lm_positions"]):
             rank_item_lists = []
             ground_truth_items = []
 
+            # only select "weighted" items -> generate boolean mask from int tensor by using tf.cast()
+            masked_lm_weights = tf.cast(test_batch["masked_lm_weights"][t_i], tf.bool)
+            # use ragged boolean mask to preserve shape(s)
+            selected_mlm_positions = tf.ragged.boolean_mask(masked_lm_positions,
+                                                            masked_lm_weights)
+            selected_mlm_ids = tf.ragged.boolean_mask(test_batch["masked_lm_ids"][t_i],
+                                                      masked_lm_weights)
+
             # iterate over the tokens that should serve as the "rank source"
-            for i in range(len(test_batch["masked_lm_positions"][t_i])):
+            for i in range(len(selected_mlm_positions)):
                 # negative sampling
                 # remove all items from the list of items to be ranked that the user has already interacted with
                 remove_items = test_batch["labels"][t_i].numpy().tolist()
                 user_rank_items = utils.remove_elements_from_list(pop_rank_items, remove_items)
-                ground_truth = test_batch["masked_lm_ids"][t_i][i].numpy()
+                ground_truth = selected_mlm_ids[i].numpy()
 
                 # actual sampling "algorithm"
                 if self.sample_popular:
@@ -104,9 +113,7 @@ class BERT4RecEvaluator(BaseEvaluator):
                 # random sampling
                 else:
                     # first shuffle the sorted rank_items list
-                    random_items = copy.copy(pop_rank_items)
-                    random.shuffle(random_items)
-                    sampled_rank_items = [random.choice(pop_rank_items) for _ in range(100)]
+                    sampled_rank_items = utils.sample_random_items_from_list(pop_rank_items, 100)
 
                 # append ground truth item id (since this is the one we actually want to rank)
                 sampled_rank_items.append(ground_truth)
@@ -116,8 +123,9 @@ class BERT4RecEvaluator(BaseEvaluator):
 
             rank_item_lists_batch.append(rank_item_lists)
             ground_truth_items_batch.append(ground_truth_items)
+            selected_mlm_positions_batch.append(selected_mlm_positions)
 
-        rankings, probabilities = wrapper.rank(test_batch, rank_item_lists_batch, test_batch["masked_lm_positions"])
+        rankings, probabilities = wrapper.rank(test_batch, rank_item_lists_batch, selected_mlm_positions_batch)
 
         for i, b in enumerate(ground_truth_items_batch):
             for j, idx in enumerate(b):
