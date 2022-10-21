@@ -10,13 +10,12 @@ numpy = "*"
 tensorflow = "==2.10.0"
 wget = "*"
 tqdm = "*"
-tensorflow-text = "==2.10.0rc0"
+tensorflow-text = "==2.10.0"
 zstandard = "*"
 tensorflow-ranking = "*"
 tensorboard = "==2.10.0"
 tensorflow-estimator = "==2.10.0"
 keras = "==2.10.0"
-tf-models-official = "*"
 
 [dev-packages]
 

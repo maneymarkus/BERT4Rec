@@ -7,7 +7,7 @@ from bert4rec.dataloaders import BaseDataloader
 from bert4rec.model import BERT4RecModelWrapper
 
 
-class BaseEvaluation(abc.ABC):
+class BaseEvaluator(abc.ABC):
     def __init__(self, sample_popular: bool = True):
         self.sample_popular = sample_popular
         self.metrics = dict()
