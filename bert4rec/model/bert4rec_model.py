@@ -18,7 +18,6 @@ _META_CONFIG_FILE_NAME = "meta_config.json"
 _TOKENIZER_VOCAB_FILE_NAME = "vocab.txt"
 _MODEL_WEIGHTS_FILES_PREFIX = "model_weights"
 
-
 train_step_signature = [{
     "labels": tf.TensorSpec(shape=(None, None), dtype=tf.int64),
     "input_word_ids": tf.TensorSpec(shape=(None, None), dtype=tf.int64),
@@ -44,6 +43,7 @@ class BERTModel(tf.keras.Model):
     built but only set. See `init__()` of the LossesContainer object (wrapper for compiled_metrics property):
     https://github.com/keras-team/keras/blob/3cec735c5602a1bd9880b1b5735c5ce64a94eb76/keras/engine/compile_utils.py#L117
     """
+
     def __init__(self,
                  encoder: networks.BertEncoder,
                  customized_masked_lm: Optional[tf.keras.layers.Layer] = None,
@@ -90,7 +90,7 @@ class BERTModel(tf.keras.Model):
     def code(self):
         return "bert4rec"
 
-    def call(self, inputs, training: bool = False):
+    def call(self, inputs, training=None, mask=None):
         if isinstance(inputs, list):
             logging.warning('List inputs to the Bert Model are discouraged.')
             inputs = dict([
@@ -366,7 +366,7 @@ if __name__ == "__main__":
     ds = dataloader.preprocess_dataset()
     for element in ds.take(1):
         example = element
-    #print(example)
+    # print(example)
     tokenizer = dataloader.get_tokenizer()
 
     bert_encoder = networks.BertEncoder(30522)
@@ -394,6 +394,6 @@ if __name__ == "__main__":
     print(loaded_wrapper.bert_model(example))
 
     rank_items = [random.randint(0, 30521) for _ in range(5)]
-    #rankings, probabilities = loaded_wrapper.rank(example, rank_items, example["masked_lm_positions"])
+    # rankings, probabilities = loaded_wrapper.rank(example, rank_items, example["masked_lm_positions"])
     print(rank_items)
-    #print(rankings)
+    # print(rankings)
