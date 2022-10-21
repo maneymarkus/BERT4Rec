@@ -102,14 +102,14 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
 
     def test_feature_preprocessing_without_masking(self):
         general_dataloader = BERT4RecDataloader(10, 5)
-        string_sequence_long = utils.generate_unique_word_list(size=15)
+        string_sequence_long = utils.generate_random_word_list(size=15)
         processed_string_sequence_long = \
             general_dataloader.feature_preprocessing(None, string_sequence_long, apply_mlm=False)
         self.assertEqual(len(processed_string_sequence_long["input_word_ids"].numpy()), 10,
                          "The length of a longer input sequence should be truncated to _MAX_SEQ_LENGTH "
                          f"({general_dataloader._MAX_SEQ_LENGTH}) after calling `feature_processing()`, but "
                          f"the actual length is: {len(processed_string_sequence_long['input_word_ids'].numpy())}")
-        string_sequence_short = utils.generate_unique_word_list(size=5)
+        string_sequence_short = utils.generate_random_word_list(size=5)
         processed_string_sequence_short = \
             general_dataloader.feature_preprocessing(None, string_sequence_short, apply_mlm=False)
         self.assertEqual(len(processed_string_sequence_short["input_word_ids"].numpy()), 10,
@@ -129,7 +129,7 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         general_dataloader = BERT4RecDataloader(128, 5)
         # sequence is longer than maximum sequence length of ML model. If it works in this case it will work in
         # other cases too
-        sequence = utils.generate_unique_word_list(size=140)
+        sequence = utils.generate_random_word_list(size=140)
         preprocessed_sequence = general_dataloader.prepare_inference(sequence)
         # get the numpy value lists without any batches
         labels = preprocessed_sequence["labels"].numpy()[-1].tolist()

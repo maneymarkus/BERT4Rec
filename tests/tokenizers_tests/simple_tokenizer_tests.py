@@ -31,7 +31,7 @@ class SimpleTokenizersTest(tf.test.TestCase):
         :return:
         """
         # generate random word list
-        words = utils.generate_unique_word_list(min_word_length, vocab_size)
+        words = utils.generate_random_word_list(min_word_length, size=vocab_size)
 
         # let tokenizer tokenize each word in list to build up vocabulary
         for word in words:
@@ -105,7 +105,7 @@ class SimpleTokenizersTest(tf.test.TestCase):
                          f"Expected: {random_word}, current value: {detokenized_token}")
 
     def test_tokenize_list(self):
-        words = utils.generate_unique_word_list()
+        words = utils.generate_random_word_list()
         tokenized_list = self.tokenizer.tokenize(words)
         self.assertIsInstance(tokenized_list, list,
                               f"Tokenizing a list with the simple tokenizer should return "
@@ -124,9 +124,9 @@ class SimpleTokenizersTest(tf.test.TestCase):
 
     def test_tokenize_multi_dimensional_list(self):
         md_list = [
-            utils.generate_unique_word_list() for _ in range(5)
+            utils.generate_random_word_list() for _ in range(5)
         ]
-        md_list_2 = utils.generate_unique_word_list(size=20)
+        md_list_2 = utils.generate_random_word_list(size=20)
         md_list_2.extend(md_list)
         tokenized_md_list = self.tokenizer.tokenize(md_list)
         tokenized_md_list_2 = self.tokenizer.tokenize(md_list_2)
@@ -151,9 +151,9 @@ class SimpleTokenizersTest(tf.test.TestCase):
 
     def test_detokenize_multi_dimensional_list(self):
         md_list = [
-            utils.generate_unique_word_list() for _ in range(5)
+            utils.generate_random_word_list() for _ in range(5)
         ]
-        md_list_2 = utils.generate_unique_word_list(size=20)
+        md_list_2 = utils.generate_random_word_list(size=20)
         md_list_2.extend(md_list)
         tokenized_md_list = self.tokenizer.tokenize(md_list)
         tokenized_md_list_2 = self.tokenizer.tokenize(md_list_2)
@@ -194,7 +194,7 @@ class SimpleTokenizersTest(tf.test.TestCase):
                          f" should return the original value (Original value: {expected_value})")
 
     def test_tokenize_df_column(self):
-        words = utils.generate_unique_word_list()
+        words = utils.generate_random_word_list()
         original_df = pd.DataFrame(words)
         tokenized_column = self.tokenizer.tokenize(original_df[0])
         self.assertIsInstance(tokenized_column, pd.Series,
@@ -234,9 +234,9 @@ class SimpleTokenizersTest(tf.test.TestCase):
                          f" should return the original value (Original value: {expected_value})")
 
     def test_tokenize_tensor(self):
-        words = utils.generate_unique_word_list(size=20)
+        words = utils.generate_random_word_list(size=20)
         md_list = [
-            utils.generate_unique_word_list(size=(random.randint(5, 15))) for _ in range(5)
+            utils.generate_random_word_list(size=(random.randint(5, 15))) for _ in range(5)
         ]
         tensor = tf.constant(words)
         ragged_tensor = tf.ragged.constant(md_list)
@@ -252,9 +252,9 @@ class SimpleTokenizersTest(tf.test.TestCase):
                          f"but is: {len(tokenized_ragged_tensor.numpy())}")
 
     def test_detokenize_tensor(self):
-        words = utils.generate_unique_word_list(size=20)
+        words = utils.generate_random_word_list(size=20)
         md_list = [
-            utils.generate_unique_word_list(size=(random.randint(5, 15))) for _ in range(5)
+            utils.generate_random_word_list(size=(random.randint(5, 15))) for _ in range(5)
         ]
         tensor = tf.constant(words)
         ragged_tensor = tf.ragged.constant(md_list)
@@ -291,19 +291,6 @@ class SimpleTokenizersTest(tf.test.TestCase):
                          f"and dropping a list of drop_tokens ({drop_tokens}) "
                          f"should actually return the original input without the drop_tokens "
                          f"(so: {original_input[:-2]}) but actually returned: {detokenized}")
-
-    def test_switching_extensibility(self):
-        words = self._fill_tokenizer_vocab(self.tokenizer, min_word_length=10)
-        self.tokenizer.disable_extensibility()
-        new_word = "Token"
-        with self.assertRaises(RuntimeError):
-            self.tokenizer.tokenize(new_word)
-
-        self.tokenizer.enable_extensibility()
-        tokenized_new_word = self.tokenizer.tokenize(new_word)
-        self.assertEqual(tokenized_new_word, len(words),
-                         f"After enabling the extensibility again, tokenizing a new word ({new_word}) should "
-                         f"tokenize it and thereby dynamically adding it to the vocab.")
 
     def test_export_vocab(self):
         pass

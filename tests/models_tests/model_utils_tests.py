@@ -19,7 +19,7 @@ class ModelUtilsTests(tf.test.TestCase):
         pass
 
     def _instantiate_dataloader(self):
-        return BERT4RecDataloader()
+        return BERT4RecDataloader(100, 5)
 
     def _build_model(self, vocab_size: int):
         bert_encoder = networks.BertEncoder(vocab_size=vocab_size)
@@ -66,7 +66,7 @@ class ModelUtilsTests(tf.test.TestCase):
         _ = model(model.inputs)
         dataloader = self._instantiate_dataloader()
 
-        random_sequence = test_utils.generate_unique_word_list(size=50)
+        random_sequence = test_utils.generate_random_word_list(size=50)
         random_rank_items = [random.randint(0, vocab_size) for _ in range(5)]
         gathered_item_embeddings = tf.gather(model.encoder.get_embedding_table(), random_rank_items)
 

@@ -18,7 +18,7 @@ class TokenizerUtilsTest(tf.test.TestCase):
         pass
 
     def _create_vocab_file(self, vocab_size: int = 100):
-        vocab = utils.generate_unique_word_list(size=vocab_size)
+        vocab = utils.generate_random_word_list(size=vocab_size)
         tmp = tempfile.NamedTemporaryFile(mode="wt", delete=False)
         for word in vocab:
             tmp.write(word + "\n")
@@ -30,7 +30,7 @@ class TokenizerUtilsTest(tf.test.TestCase):
             _ = tokenizer_utils.export_num_vocab_to_file(pathlib.Path("/" + str(uuid.uuid4())), [])
 
         vocab_size = 25
-        vocab = utils.generate_unique_word_list(size=vocab_size)
+        vocab = utils.generate_random_word_list(size=vocab_size)
         logging.debug("\nVocab:\n" + str(vocab))
         tmp = tempfile.NamedTemporaryFile(delete=False)
         tmp.close()

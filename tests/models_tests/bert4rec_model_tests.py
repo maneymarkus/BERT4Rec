@@ -161,8 +161,8 @@ class BERT4RecModelTests(tf.test.TestCase):
         number_rank_items = 7
         sequence_length = 50
 
-        dataloader = BERT4RecDataloader()
-        sequence = utils.generate_unique_word_list(size=sequence_length)
+        dataloader = BERT4RecDataloader(100, 5)
+        sequence = utils.generate_random_word_list(size=sequence_length)
 
         encoder_input = dataloader.feature_preprocessing(None, sequence)
 
