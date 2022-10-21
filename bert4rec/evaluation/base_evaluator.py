@@ -26,5 +26,16 @@ class BaseEvaluator(abc.ABC):
         pass
 
     def save_results(self, save_path: pathlib.Path):
-        with open(save_path.joinpath("eval_results.txt"), "w") as f:
+        """
+        Save the results (or the current status of the metrics) to the given save_path
+
+        :param save_path:
+        :return:
+        """
+        if save_path.is_dir():
+            save_path = save_path.joinpath("eval_results.json")
+
+        with open(save_path, "w") as f:
             json.dump(self.metrics, f, indent=4)
+
+        return save_path
