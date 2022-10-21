@@ -16,6 +16,107 @@ class DataloaderUtilsTest(tf.test.TestCase):
     def tearDown(self):
         pass
 
+    def test_rank_items_by_popularity(self):
+        list_1 = [0, 5, 2, 8, 4, 6, 3, 6, 2, 7, 5, 8, 9, 4, 5, 6, 6, 6, 6, 6, 1, 1, 3, 7, 7, 9, 9, 9]
+        sorted_list_1 = utils.rank_items_by_popularity(list_1)
+        self.assertEqual(len(sorted_list_1), len(set(list_1)),
+                         f"The ranked list should have no duplicates and therefore should have as many elements as a"
+                         f"set generated from that list ({len(set(list_1))}) but actually has a length of: "
+                         f"{len(sorted_list_1)}")
+        self.assertEqual(sorted_list_1[0], 6,
+                         f"The most popular number in this list: \n{list_1}\nshould be 6 but is: {sorted_list_1[0]}")
+        self.assertEqual(sorted_list_1[9], 0,
+                         f"The least popular number in this list: \n{list_1}\nshould be 0 but is: {sorted_list_1[9]}")
+
+    def test_split_sequence_df(self):
+        df_size = 6
+        subject_list = []
+        item_list = []
+        for _ in range(df_size):
+            subject = random.randint(0, 100)
+            # length of sequence
+            for _ in range(random.randint(10, 50)):
+                subject_list.append(subject)
+                item = random.randint(0, 1000)
+                item_list.append(item)
+
+        # add special case 1
+        special_subject_1 = random.randint(100, 200)
+        subject_list.append(special_subject_1)
+        item_list.append(random.randint(0, 1000))
+
+        # add special case 2
+        special_subject_2 = random.randint(100, 200)
+        for _ in range(2):
+            subject_list.append(special_subject_2)
+            item_list.append(random.randint(0, 1000))
+
+        # add special case 3
+        special_subject_3 = random.randint(100, 200)
+        for _ in range(4):
+            subject_list.append(special_subject_3)
+            item_list.append(random.randint(0, 1000))
+
+        # add special case 4
+        special_subject_4 = random.randint(100, 200)
+        for _ in range(5):
+            subject_list.append(special_subject_4)
+            item_list.append(random.randint(0, 1000))
+
+        data = {
+            "subject": subject_list,
+            "item": item_list
+        }
+
+        group_by_column = "subject"
+        sequence_column = "item"
+
+        df = pd.DataFrame(data)
+
+        train_df, val_df, test_df = utils.split_sequence_df(df, group_by_column, sequence_column)
+        self.assertEqual(train_df.shape[0], df_size + 4 - 1,
+                         f"The generated train dataframe should have {df_size + 4 - 1} number of rows "
+                         f"(one special case should be filtered out) but the actual number of rows is: "
+                         f"{train_df.shape[0]} ")
+        self.assertLessEqual(val_df.shape[0], train_df.shape[0],
+                             f"The generated validation dataframe should have less or an equal amount of rows "
+                             f"compared to the generated train dataframe ({train_df.shape[0]}) but actually has: "
+                             f"{val_df.shape[0]}")
+        self.assertLessEqual(test_df.shape[0], val_df.shape[0],
+                             f"The generated test dataframe should have less or an equal amount of rows "
+                             f"compared to the generated validation dataframe ({val_df.shape[0]}) but actually has: "
+                             f"{test_df.shape[0]}")
+        self.assertEqual(val_df.shape[0], df_size + 4 - 3,
+                         f"The generated validation dataframe should have {df_size + 4 - 3} number of rows "
+                         f"(three special cases should be filtered out) but the actual number of rows is: "
+                         f"{val_df.shape[0]}")
+        self.assertEqual(test_df.shape[0], df_size + 4 - 3,
+                         f"The generated test dataframe should have {df_size + 4 - 3} number of rows "
+                         f"(three special cases should be filtered out) but the actual number of rows is: "
+                         f"{test_df.shape[0]}")
+        self.assertEqual(len(val_df["item"].iloc[-1]), 4,
+                         f"The last row of the generated validation dataframe should contain a sequence of length 4 "
+                         f"but actually has: {len(val_df['item'].iloc[-1])}.\nSequence:{val_df['item'].iloc[-1]}")
+        self.assertEqual(len(test_df["item"].iloc[-1]), 5,
+                         f"The last row of the generated test dataframe should contain a sequence of length 5 "
+                         f"but actually has: {len(test_df['item'].iloc[-1])}.\nSequence:{test_df['item'].iloc[-1]}")
+
+        special_subject_2_data = train_df.loc[train_df["subject"] == special_subject_2]
+        special_subject_3_data = train_df.loc[train_df["subject"] == special_subject_3]
+        special_subject_4_data = train_df.loc[train_df["subject"] == special_subject_4]
+        self.assertEqual(len(special_subject_2_data["item"].iloc[0]), 2,
+                         f"The length of the second special item sequence in the training dataframe should be 2, "
+                         f"but actually is: {len(special_subject_2_data['item'])}.\n"
+                         f"Sequence:{special_subject_2_data['item']}")
+        self.assertEqual(len(special_subject_3_data["item"].iloc[0]), 4,
+                         f"The length of the third special item sequence in the training dataframe should be 4, "
+                         f"but actually is: {len(special_subject_3_data['item'])}.\n"
+                         f"Sequence:{special_subject_3_data['item']}")
+        self.assertEqual(len(special_subject_4_data["item"].iloc[0]), 3,
+                         f"The length of the fourth special item sequence in the training dataframe should be 3, "
+                         f"but actually is: {len(special_subject_4_data['item'])}.\n"
+                         f"Sequence:{special_subject_4_data['item']}")
+
     def test_convert_df_into_ds(self):
         ds_size = 5
         test_list = [
@@ -59,9 +160,9 @@ class DataloaderUtilsTest(tf.test.TestCase):
         seq_length = 100
         values = list(random.randint(0, vocab_size - 1) for _ in range(seq_length))
         logging.debug(values)
-        original_tensor = tf.ragged.constant([values])
-        # max selections per batch
-        mspb = 25
+        original_tensor = tf.constant(values)
+        # max selections per sequence
+        msps = 25
         # start token id
         sti = 0
         # end token id
@@ -76,10 +177,10 @@ class DataloaderUtilsTest(tf.test.TestCase):
         mtr = 0.8
         # random token rate
         rtr = 0.1
-        random_selector, mask_values_chooser, masked_token_ids, masked_lm_positions, masked_lm_ids = \
+        masked_token_ids, masked_lm_positions, masked_lm_ids = \
             utils.apply_dynamic_masking_task(
-                segments=original_tensor,
-                max_selections_per_batch=mspb,
+                sequence_tensor=original_tensor,
+                max_selections_per_seq=msps,
                 mask_token_id=mti,
                 special_token_ids=[sti, eti, uti],
                 vocab_size=vocab_size,
@@ -88,24 +189,14 @@ class DataloaderUtilsTest(tf.test.TestCase):
                 random_token_rate=rtr
             )
 
-        self.assertIsInstance(random_selector, tf_text.RandomItemSelector,
-                              f"The first return value of the util function that applies the dynamic language model "
-                              f"should be a tensorflow_text.RandomItemSelector, "
-                              f"but is of type {type(random_selector)}")
-
-        self.assertIsInstance(mask_values_chooser, tf_text.MaskValuesChooser,
-                              f"Th second return value of the util function that applies the dynamic language model "
-                              f"should be a tensorflow_text.MaskValuesChooser, "
-                              f"but is of type {type(mask_values_chooser)}")
-
-        len_original_tensor = len(original_tensor.numpy()[0])
-        len_masked_tensor = len(masked_token_ids.numpy()[0])
+        len_original_tensor = len(original_tensor.numpy())
+        len_masked_tensor = len(masked_token_ids.numpy())
         self.assertEqual(len_original_tensor, len_masked_tensor,
                          f"The length of the masked tensor should be the exact same length as the original tensor "
                          f"(which is: {len_original_tensor}), but has a length of: "
                          f"{len_masked_tensor}")
 
-        number_masked_token_positions = len(masked_lm_positions.numpy()[0])
+        number_masked_token_positions = len(masked_lm_positions.numpy())
         self.assertLessEqual(number_masked_token_positions, 25,
                              f"The number of masked tokens should be less than or equal to 25, "
                              f"but is: {number_masked_token_positions}")
@@ -113,16 +204,16 @@ class DataloaderUtilsTest(tf.test.TestCase):
                            f"The number of masked tokens should be greater than 0, "
                            f"but is {number_masked_token_positions}")
 
-        number_masked_tokens = len(masked_lm_ids.numpy()[0])
+        number_masked_tokens = len(masked_lm_ids.numpy())
         self.assertEqual(number_masked_tokens, number_masked_token_positions,
                          f"The number of masked token positions ({number_masked_token_positions}) "
                          f"and the number of masked tokens ({number_masked_tokens}) should be equal.")
 
-        masked_tokens = masked_lm_ids.numpy()[0]
+        masked_tokens = masked_lm_ids.numpy()
         self.assertTrue(all(x in values for x in masked_tokens),
                         f"Every token that got masked should appear in the original values list")
 
-        masked_token_positions = masked_lm_positions.numpy()[0]
+        masked_token_positions = masked_lm_positions.numpy()
         self.assertTrue(all(0 <= x <= seq_length for x in masked_token_positions),
                         f"Each position of every masked token should be greater than or equal to 0 and "
                         f"less than or equal to the sequence length")
