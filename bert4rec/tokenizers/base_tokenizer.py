@@ -48,7 +48,7 @@ class BaseTokenizer(abc.ABC):
         for features in ds:
             self.tokenize(features)
 
-    def get_vocab(self) -> dict:
+    def get_vocab(self):
         return self._vocab
 
     def get_vocab_size(self) -> int:
