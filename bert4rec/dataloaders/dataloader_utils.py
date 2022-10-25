@@ -278,7 +278,7 @@ def split_dataset(ds: tf.data.Dataset,
 def make_batches(dataset: tf.data.Dataset,
                  buffer_size: int = None,
                  batch_size: int = 64,
-                 squeeze_tensors: bool = False):
+                 squeeze_tensors: bool = False) -> tf.data.Dataset:
     """
     Combines consecutive elements of the given dataset into batches. Tensors may be squeezed if wanted,
     to prevent elements of the batched dataset to have a shape of [batch_size, 1, tokens].
