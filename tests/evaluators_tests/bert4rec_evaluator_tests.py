@@ -39,7 +39,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         max_seq_len = 10
 
         prepared_ds, dataloader = self._create_test_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
-        prepared_batches = dataloader_utils.make_batches(prepared_ds, batch_size=2)
+        prepared_batches = dataloader_utils.make_batches(prepared_ds, batch_size=5)
         evaluator = evaluator_factory.get_evaluator()
 
         # load a specific config
@@ -63,13 +63,12 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
                          f"successfully processed) as there are elements (or better sequences in this case) "
                          f"in the dataset ({ds_size}), but there actually are: {metrics['valid_ranks']}")
 
+        del metrics["valid_ranks"]
         for metric, value in metrics.items():
-            self.assertGreater(value, 0,
-                               f"Each metric should have a positive float value greater than 0, "
-                               f"but {metric} is {value}")
             self.assertBetween(value, 0, 1,
-                               f"Each metric should have a positive float value greater than or equal to 0 "
-                               f"and less than or equal to 1, but `{metric}` is `{value}`")
+                               f"Each metric (except valid_ranks) should have a positive float value "
+                               f"greater than or equal to 0 and less than or equal to 1, "
+                               f"but `{metric}` is `{value}`")
 
 
 if __name__ == '__main__':
