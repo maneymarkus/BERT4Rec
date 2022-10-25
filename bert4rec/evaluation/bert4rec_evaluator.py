@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tqdm
 
 from bert4rec.dataloaders import BaseDataloader
 from bert4rec.evaluation import evaluation_utils as utils
@@ -49,7 +50,7 @@ class BERT4RecEvaluator(BaseEvaluator):
         if popular_items_ranking is None:
             popular_items_ranking = dataloader.create_popular_item_ranking()
         # iterate over the available batches
-        for batch in test_data:
+        for batch in tqdm.tqdm(test_data):
             self.evaluate_batch(wrapper, batch, popular_items_ranking)
 
         self.ndcg_1 = self.ndcg_1_count / self.valid_ranks
