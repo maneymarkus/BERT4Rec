@@ -11,31 +11,17 @@ from bert4rec.model import BERT4RecModelWrapper
 class BERT4RecEvaluator(BaseEvaluator):
     def __init__(self, sample_popular: bool = True):
         super().__init__(sample_popular)
-        self.valid_ranks = 0
-        self.ndcg_1_count = 0
-        self.ndcg_1 = 0.0
-        self.hit_1_count = 0
-        self.hit_1 = 0.0
-        self.ndcg_5_count = 0
-        self.ndcg_5 = 0.0
-        self.hit_5_count = 0
-        self.hit_5 = 0.0
-        self.ndcg_10_count = 0
-        self.ndcg_10 = 0.0
-        self.hit_10_count = 0
-        self.hit_10 = 0.0
-        self.ap_count = 0.0
-        self.ap = 0.0
 
+    def reset_metrics(self):
         self.metrics.update({
-            "valid_ranks": self.valid_ranks,
-            "ndcg@1": self.ndcg_1,
-            "hit@1": self.hit_1,
-            "ndcg@5": self.ndcg_5,
-            "hit@5": self.hit_5,
-            "ndcg@10": self.ndcg_10,
-            "hit@10": self.hit_10,
-            "ap": self.ap
+            "valid_ranks": 0,
+            "ndcg@1": 0.0,
+            "hit@1": 0.0,
+            "ndcg@5": 0.0,
+            "hit@5": 0.0,
+            "ndcg@10": 0.0,
+            "hit@10": 0.0,
+            "ap": 0.0
         })
 
     def evaluate(self, wrapper: BERT4RecModelWrapper,
@@ -49,31 +35,32 @@ class BERT4RecEvaluator(BaseEvaluator):
 
         if popular_items_ranking is None:
             popular_items_ranking = dataloader.create_popular_item_ranking()
+
+        counts = {
+            "ndcg_1_count": 0,
+            "hit_1_count": 0,
+            "ndcg_5_count": 0,
+            "hit_5_count": 0,
+            "ndcg_10_count": 0,
+            "hit_10_count": 0,
+            "ap_count": 0
+        }
+
         # iterate over the available batches
         for batch in tqdm.tqdm(test_data):
-            self.evaluate_batch(wrapper, batch, popular_items_ranking)
+            self.evaluate_batch(wrapper, batch, popular_items_ranking, counts)
 
-        self.ndcg_1 = self.ndcg_1_count / self.valid_ranks
-        self.hit_1 = self.hit_1_count / self.valid_ranks
-        self.ndcg_5 = self.ndcg_5_count / self.valid_ranks
-        self.hit_5 = self.hit_5_count / self.valid_ranks
-        self.ndcg_10 = self.ndcg_10_count / self.valid_ranks
-        self.hit_10 = self.hit_10_count / self.valid_ranks
-        self.ap = self.ap_count / self.valid_ranks
-        self.metrics.update({
-            "valid_ranks": self.valid_ranks,
-            "ndcg@1": self.ndcg_1,
-            "hit@1": self.hit_1,
-            "ndcg@5": self.ndcg_5,
-            "hit@5": self.hit_5,
-            "ndcg@10": self.ndcg_10,
-            "hit@10": self.hit_10,
-            "ap": self.ap
-        })
+        self.metrics["ndcg@1"] = counts["ndcg_1_count"] / self.metrics["valid_ranks"]
+        self.metrics["hit@1"] = counts["hit_1_count"] / self.metrics["valid_ranks"]
+        self.metrics["ndcg@5"] = counts["ndcg_5_count"] / self.metrics["valid_ranks"]
+        self.metrics["hit@5"] = counts["hit_5_count"] / self.metrics["valid_ranks"]
+        self.metrics["ndcg@10"] = counts["ndcg_10_count"] / self.metrics["valid_ranks"]
+        self.metrics["hit@10"] = counts["hit_10_count"] / self.metrics["valid_ranks"]
+        self.metrics["ap"] = counts["ap_count"] / self.metrics["valid_ranks"]
 
         return self.metrics
 
-    def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict, pop_rank_items: list):
+    def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict, pop_rank_items: list, counts: dict):
         """
         Evaluation code taken from
         https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run.py#L176
@@ -81,6 +68,7 @@ class BERT4RecEvaluator(BaseEvaluator):
         :param wrapper:
         :param test_batch:
         :param pop_rank_items:
+        :param counts:
         :return:
         """
         rank_item_lists_batch = []
@@ -132,15 +120,15 @@ class BERT4RecEvaluator(BaseEvaluator):
             for j, idx in enumerate(b):
                 rank = np.where(rankings[i][j].numpy() == idx)[0][0]
 
-                self.valid_ranks += 1
+                self.metrics["valid_ranks"] += 1
 
                 if rank < 1:
-                    self.ndcg_1_count += 1
-                    self.hit_1_count += 1
+                    counts["ndcg_1_count"] += 1
+                    counts["hit_1_count"] += 1
                 if rank < 5:
-                    self.ndcg_5_count += 1 / np.log2(rank + 2)
-                    self.hit_5_count += 1
+                    counts["ndcg_5_count"] += 1 / np.log2(rank + 2)
+                    counts["hit_5_count"] += 1
                 if rank < 10:
-                    self.ndcg_10_count += 1 / np.log2(rank + 2)
-                    self.hit_10_count += 1
-                self.ap_count += 1 / (rank + 1)
+                    counts["ndcg_10_count"] += 1 / np.log2(rank + 2)
+                    counts["hit_10_count"] += 1
+                counts["ap_count"] += 1 / (rank + 1)

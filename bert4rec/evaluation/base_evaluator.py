@@ -11,6 +11,11 @@ class BaseEvaluator(abc.ABC):
     def __init__(self, sample_popular: bool = True):
         self.sample_popular = sample_popular
         self.metrics = dict()
+        self.reset_metrics()
+
+    @abc.abstractmethod
+    def reset_metrics(self):
+        pass
 
     @abc.abstractmethod
     def evaluate(self, wrapper: BERT4RecModelWrapper, test_data: tf.data.Dataset, dataloader: BaseDataloader) -> dict:
