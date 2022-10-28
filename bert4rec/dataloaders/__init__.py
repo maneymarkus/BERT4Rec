@@ -42,8 +42,8 @@ class BERT4RecDataloaderFactory(BaseDataloaderFactory):
         return BERT4RecIMDBDataloader(**kwargs)
 
 
-def get_dataloader_factory(model: str = "bert4rec") -> BaseDataloaderFactory:
-    if model == "bert4rec":
+def get_dataloader_factory(identifier: str = "bert4rec") -> BaseDataloaderFactory:
+    if identifier == "bert4rec":
         return BERT4RecDataloaderFactory()
     else:
-        raise ValueError(f"{model} is not a known model!")
+        raise ValueError(f"{identifier} is not a known model/identifier!")
