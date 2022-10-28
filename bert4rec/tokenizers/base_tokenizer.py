@@ -75,7 +75,7 @@ class BaseTokenizer(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def code(self):
+    def identifier(self):
         pass
 
     @abc.abstractmethod

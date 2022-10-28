@@ -33,7 +33,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         self._vocab = list()
 
     @property
-    def code(self):
+    def identifier(self):
         return "simple"
 
     def clear_vocab(self):
