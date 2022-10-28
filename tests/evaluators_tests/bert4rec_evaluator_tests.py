@@ -3,7 +3,7 @@ import random
 import tensorflow as tf
 
 from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils
-from bert4rec.evaluation import evaluator_factory
+import bert4rec.evaluation as evaluation
 from bert4rec.model import BERTModel, BERT4RecModelWrapper
 from bert4rec.model.components import networks
 import bert4rec.utils as utils
@@ -40,7 +40,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
 
         prepared_ds, dataloader = self._create_test_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
         prepared_batches = dataloader_utils.make_batches(prepared_ds, batch_size=5)
-        evaluator = evaluator_factory.get_evaluator()
+        evaluator = evaluation.get()
 
         # load a specific config
         config_path = pathlib.Path("../../config/bert_train_configs/ml-1m_128.json")

@@ -2,12 +2,15 @@ from bert4rec.evaluation.base_evaluator import BaseEvaluator
 from bert4rec.evaluation.bert4rec_evaluator import BERT4RecEvaluator
 
 
-class EvaluatorFactory:
-    def get_evaluator(self, model: str = "bert4rec", **kwargs):
-        if model == "bert4rec":
-            return BERT4RecEvaluator(**kwargs)
-        else:
-            raise ValueError(f"{model} is not known!")
+def get(identifier: str = "bert4rec", **kwargs):
+    """
+    Factory method to return a concrete evaluator instance
 
-
-evaluator_factory = EvaluatorFactory()
+    :param identifier:
+    :param kwargs:
+    :return:
+    """
+    if identifier == "bert4rec":
+        return BERT4RecEvaluator(**kwargs)
+    else:
+        raise ValueError(f"{identifier} is not known!")

@@ -12,7 +12,7 @@ class BaseEvaluatorTest(tf.test.TestCase):
         super(BaseEvaluatorTest, self).setUp()
         # Testing base evaluator features with a concrete tokenizer implementation (as abstract classes
         # can't be instantiated)
-        self.evaluator = evaluation.evaluator_factory.get_evaluator()
+        self.evaluator = evaluation.get()
         self.evaluator.metrics.update({
             "metric": "test"
         })
