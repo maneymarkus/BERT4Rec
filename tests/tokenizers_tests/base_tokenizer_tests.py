@@ -10,7 +10,7 @@ class BaseTokenizerTests(tf.test.TestCase):
         super(BaseTokenizerTests, self).setUp()
         # Testing base tokenizer features with a concrete tokenizer implementation (as abstract classes
         # can't be instantiated)
-        self.tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
+        self.tokenizer = tokenizers.get("simple")
         pass
 
     def tearDown(self):

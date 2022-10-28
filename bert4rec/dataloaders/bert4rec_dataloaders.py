@@ -32,7 +32,7 @@ class BERT4RecDataloader(BaseDataloader):
                  tokenizer: BaseTokenizer = None):
         # BERT4Rec works with simple tokenizer
         if tokenizer is None:
-            tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
+            tokenizer = tokenizers.get("simple")
         self.tokenizer = tokenizer
 
         self._PAD_TOKEN = "[PAD]"

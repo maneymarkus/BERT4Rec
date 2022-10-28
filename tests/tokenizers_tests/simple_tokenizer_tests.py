@@ -13,7 +13,7 @@ class SimpleTokenizersTest(tf.test.TestCase):
     def setUp(self) -> None:
         super(SimpleTokenizersTest, self).setUp()
         logging.set_verbosity(logging.DEBUG)
-        self.tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
+        self.tokenizer = tokenizers.get("simple")
 
     def tearDown(self):
         self.tokenizer = None
@@ -85,7 +85,7 @@ class SimpleTokenizersTest(tf.test.TestCase):
                             f"Current value: {input1} == {input2} => {token1} == {token2}")
 
     def test_tokenizing_vocab(self):
-        simple_tokenizer = tokenizers.tokenizer_factory.get_tokenizer("simple")
+        simple_tokenizer = tokenizers.get("simple")
         words = self._fill_tokenizer_vocab(simple_tokenizer, 5, 1000)
         random_word = random.choice(words)
         expected_token = words.index(random_word)
