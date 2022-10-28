@@ -29,7 +29,7 @@ class BaseTokenizerTests(tf.test.TestCase):
         :return:
         """
         # generate random word list
-        words = utils.generate_random_word_list(min_word_length, vocab_size)
+        words = utils.generate_random_word_list(min_word_length, size=vocab_size)
 
         # let tokenizer tokenize each word in list to build up vocabulary
         for word in words:
@@ -53,7 +53,8 @@ class BaseTokenizerTests(tf.test.TestCase):
         vocab_size = random.randint(50, 150)
         vocab = self.tokenizer.get_vocab()
         self.assertEqual(vocab, [],
-                         f"The vocab returned by the tokenizer should be an empty list prior to filling it,"
+                         f"The vocab returned by the tokenizer should be an empty list (in this case of "
+                         f"using the SimpleTokenizer) prior to filling it,"
                          f"but actually is: {vocab} (and type: {type(vocab)})")
         self._fill_tokenizer_vocab(self.tokenizer, vocab_size=vocab_size)
         vocab = self.tokenizer.get_vocab()
