@@ -56,7 +56,7 @@ class BERT4RecDataloader(BaseDataloader):
         self.random_token_rate = random_token_rate
         self.input_duplication_factor = input_duplication_factor
 
-    def dataset_code(self):
+    def dataset_identifier(self):
         pass
 
     def load_data_into_ds(self) -> tf.data.Dataset:
@@ -313,7 +313,7 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
             tokenizer)
 
     @property
-    def dataset_code(self):
+    def dataset_identifier(self):
         return "ml_1m"
 
     def load_data_into_ds(self) -> tf.data.Dataset:
@@ -387,7 +387,7 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
             tokenizer)
 
     @property
-    def dataset_code(self):
+    def dataset_identifier(self):
         return "ml_20m"
 
     def load_data_into_ds(self) -> tf.data.Dataset:
@@ -460,7 +460,7 @@ class BERT4RecIMDBDataloader(BERT4RecDataloader):
             tokenizer)
 
     @property
-    def dataset_code(self):
+    def dataset_identifier(self):
         return "imdb"
 
     def load_data_into_ds(self) -> tf.data.Dataset:
@@ -499,7 +499,7 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
             tokenizer)
 
     @property
-    def dataset_code(self):
+    def dataset_identifier(self):
         return "reddit"
 
     def load_data_into_ds(self) -> tf.data.Dataset:

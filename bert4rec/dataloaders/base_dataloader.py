@@ -13,7 +13,7 @@ class BaseDataloader(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def dataset_code(self):
+    def dataset_identifier(self):
         pass
 
     @abc.abstractmethod
