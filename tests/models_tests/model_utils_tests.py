@@ -4,6 +4,7 @@ import random
 import tensorflow as tf
 
 from bert4rec.dataloaders import BERT4RecDataloader
+import bert4rec.dataloaders.dataloader_utils as dataloader_utils
 from bert4rec.model import BERTModel
 from bert4rec.model.components import networks
 import bert4rec.model.model_utils as utils
@@ -18,12 +19,26 @@ class ModelUtilsTests(tf.test.TestCase):
     def tearDown(self):
         pass
 
-    def _instantiate_dataloader(self):
-        return BERT4RecDataloader(100, 5)
-
     def _build_model(self, vocab_size: int):
         bert_encoder = networks.BertEncoder(vocab_size=vocab_size)
         return BERTModel(bert_encoder)
+
+    def _create_test_dataset(self, ds_size: int = 1000, seq_min_len: int = 5, seq_max_len: int = 100):
+        subject_list = []
+        sequence_list = []
+        for i in range(ds_size):
+            subject_list.append(random.randint(0, ds_size * 2))
+            sequence_length = random.randint(seq_min_len, seq_max_len)
+            sequence = test_utils.generate_random_word_list(size=sequence_length)
+            sequence_list.append(sequence)
+        sequences = tf.ragged.constant(sequence_list)
+        ds = tf.data.Dataset.from_tensor_slices((subject_list, sequences))
+
+        dataloader = BERT4RecDataloader(max_seq_len=seq_max_len, max_predictions_per_seq=5)
+
+        dataloader.generate_vocab(sequences)
+        prepared_ds = dataloader.preprocess_dataset(ds, finetuning=True)
+        return prepared_ds, dataloader
 
     def test_determine_model_path(self):
         path = pathlib.Path(".")
@@ -60,17 +75,22 @@ class ModelUtilsTests(tf.test.TestCase):
                          f"Expected path: {absolute_path}. Actual path: {determined_absolute_path}")
 
     def test_rank_items(self):
-        vocab_size = 500
+        ds_size = 1
+
+        prepared_ds, dataloader = self._create_test_dataset(ds_size)
+        prepared_batches = dataloader_utils.make_batches(prepared_ds)
+        vocab_size = dataloader.tokenizer.get_vocab_size()
+
         model = self._build_model(vocab_size)
         # initialize weights
         _ = model(model.inputs)
-        dataloader = self._instantiate_dataloader()
 
-        random_sequence = test_utils.generate_random_word_list(size=50)
+        encoder_input = None
+        for el in prepared_batches.take(1):
+            encoder_input = el
         random_rank_items = [random.randint(0, vocab_size) for _ in range(5)]
         gathered_item_embeddings = tf.gather(model.encoder.get_embedding_table(), random_rank_items)
 
-        encoder_input = dataloader.feature_preprocessing(None, random_sequence)
         encoder_output = model(encoder_input)
         sequence_output = encoder_output["sequence_output"]
         pooled_output = encoder_output["pooled_output"][0]
