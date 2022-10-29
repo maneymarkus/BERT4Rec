@@ -23,23 +23,6 @@ class ModelUtilsTests(tf.test.TestCase):
         bert_encoder = networks.BertEncoder(vocab_size=vocab_size)
         return BERTModel(bert_encoder)
 
-    def _create_test_dataset(self, ds_size: int = 1000, seq_min_len: int = 5, seq_max_len: int = 100):
-        subject_list = []
-        sequence_list = []
-        for i in range(ds_size):
-            subject_list.append(random.randint(0, ds_size * 2))
-            sequence_length = random.randint(seq_min_len, seq_max_len)
-            sequence = test_utils.generate_random_word_list(size=sequence_length)
-            sequence_list.append(sequence)
-        sequences = tf.ragged.constant(sequence_list)
-        ds = tf.data.Dataset.from_tensor_slices((subject_list, sequences))
-
-        dataloader = BERT4RecDataloader(max_seq_len=seq_max_len, max_predictions_per_seq=5)
-
-        dataloader.generate_vocab(sequences)
-        prepared_ds = dataloader.preprocess_dataset(ds, finetuning=True)
-        return prepared_ds, dataloader
-
     def test_determine_model_path(self):
         path = pathlib.Path(".")
         with self.assertRaises(ValueError):
@@ -77,7 +60,7 @@ class ModelUtilsTests(tf.test.TestCase):
     def test_rank_items(self):
         ds_size = 1
 
-        prepared_ds, dataloader = self._create_test_dataset(ds_size)
+        prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size)
         prepared_batches = dataloader_utils.make_batches(prepared_ds)
         vocab_size = dataloader.tokenizer.get_vocab_size()
 

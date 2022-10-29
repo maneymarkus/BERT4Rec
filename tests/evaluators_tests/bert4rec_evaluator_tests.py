@@ -18,23 +18,6 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
     def tearDown(self):
         self.evaluator = None
 
-    def _create_test_dataset(self, ds_size: int = 1000, seq_min_len: int = 5, seq_max_len: int = 100):
-        subject_list = []
-        sequence_list = []
-        for i in range(ds_size):
-            subject_list.append(random.randint(0, ds_size * 2))
-            sequence_length = random.randint(seq_min_len, seq_max_len)
-            sequence = test_utils.generate_random_word_list(size=sequence_length)
-            sequence_list.append(sequence)
-        sequences = tf.ragged.constant(sequence_list)
-        ds = tf.data.Dataset.from_tensor_slices((subject_list, sequences))
-
-        dataloader = BERT4RecDataloader(max_seq_len=seq_max_len, max_predictions_per_seq=5)
-
-        dataloader.generate_vocab(sequences)
-        prepared_ds = dataloader.preprocess_dataset(ds, finetuning=True)
-        return prepared_ds, dataloader
-
     def _create_model_wrapper(self, config_identifier: str = "ml-1m_128.json", vocab_size: int = 1000):
         # load a specific config
         config_path = pathlib.Path(f"../../config/bert_train_configs/{config_identifier}")
@@ -52,7 +35,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         ds_size = 1000
         max_seq_len = 10
 
-        prepared_ds, dataloader = self._create_test_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
+        prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
         prepared_batches = dataloader_utils.make_batches(prepared_ds, batch_size=5)
         vocab_size = dataloader.tokenizer.get_vocab_size()
 
@@ -83,7 +66,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         ds_size = 100
         max_seq_len = 5
 
-        prepared_ds, dataloader = self._create_test_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
+        prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
         prepared_batches = dataloader_utils.make_batches(prepared_ds, batch_size=5)
         vocab_size = dataloader.tokenizer.get_vocab_size()
 
