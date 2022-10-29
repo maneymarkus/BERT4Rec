@@ -13,7 +13,7 @@ class BERT4RecEvaluator(BaseEvaluator):
         super().__init__(sample_popular)
 
     def reset_metrics(self):
-        self.metrics.update({
+        self._metrics.update({
             "valid_ranks": 0,
             "ndcg@1": 0.0,
             "hit@1": 0.0,
@@ -50,15 +50,15 @@ class BERT4RecEvaluator(BaseEvaluator):
         for batch in tqdm.tqdm(test_data):
             self.evaluate_batch(wrapper, batch, popular_items_ranking, counts)
 
-        self.metrics["ndcg@1"] = counts["ndcg_1_count"] / self.metrics["valid_ranks"]
-        self.metrics["hit@1"] = counts["hit_1_count"] / self.metrics["valid_ranks"]
-        self.metrics["ndcg@5"] = counts["ndcg_5_count"] / self.metrics["valid_ranks"]
-        self.metrics["hit@5"] = counts["hit_5_count"] / self.metrics["valid_ranks"]
-        self.metrics["ndcg@10"] = counts["ndcg_10_count"] / self.metrics["valid_ranks"]
-        self.metrics["hit@10"] = counts["hit_10_count"] / self.metrics["valid_ranks"]
-        self.metrics["ap"] = counts["ap_count"] / self.metrics["valid_ranks"]
+        self._metrics["ndcg@1"] = counts["ndcg_1_count"] / self._metrics["valid_ranks"]
+        self._metrics["hit@1"] = counts["hit_1_count"] / self._metrics["valid_ranks"]
+        self._metrics["ndcg@5"] = counts["ndcg_5_count"] / self._metrics["valid_ranks"]
+        self._metrics["hit@5"] = counts["hit_5_count"] / self._metrics["valid_ranks"]
+        self._metrics["ndcg@10"] = counts["ndcg_10_count"] / self._metrics["valid_ranks"]
+        self._metrics["hit@10"] = counts["hit_10_count"] / self._metrics["valid_ranks"]
+        self._metrics["ap"] = counts["ap_count"] / self._metrics["valid_ranks"]
 
-        return self.metrics
+        return self._metrics
 
     def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict, pop_rank_items: list, counts: dict):
         """
@@ -120,7 +120,7 @@ class BERT4RecEvaluator(BaseEvaluator):
             for j, idx in enumerate(b):
                 rank = np.where(rankings[i][j].numpy() == idx)[0][0]
 
-                self.metrics["valid_ranks"] += 1
+                self._metrics["valid_ranks"] += 1
 
                 if rank < 1:
                     counts["ndcg_1_count"] += 1

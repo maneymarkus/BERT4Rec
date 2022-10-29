@@ -10,7 +10,7 @@ from bert4rec.model import BERT4RecModelWrapper
 class BaseEvaluator(abc.ABC):
     def __init__(self, sample_popular: bool = True):
         self.sample_popular = sample_popular
-        self.metrics = dict()
+        self._metrics = dict()
         self.reset_metrics()
 
     @abc.abstractmethod
@@ -30,6 +30,9 @@ class BaseEvaluator(abc.ABC):
         """
         pass
 
+    def get_metrics(self):
+        return self._metrics
+
     def save_results(self, save_path: pathlib.Path):
         """
         Save the results (or the current status of the metrics) to the given save_path
@@ -41,6 +44,6 @@ class BaseEvaluator(abc.ABC):
             save_path = save_path.joinpath("eval_results.json")
 
         with open(save_path, "w") as f:
-            json.dump(self.metrics, f, indent=4)
+            json.dump(self._metrics, f, indent=4)
 
         return save_path
