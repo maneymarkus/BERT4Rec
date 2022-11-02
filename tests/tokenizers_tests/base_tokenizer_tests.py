@@ -36,6 +36,14 @@ class BaseTokenizerTests(tf.test.TestCase):
             tokenizer.tokenize(word)
         return words
 
+    def test_tokenizer_factory_method(self):
+        tokenizer = tokenizers.get("simple")
+        self.assertIsInstance(tokenizer, tokenizers.SimpleTokenizer)
+        tokenizer2 = tokenizers.get()
+        self.assertIsInstance(tokenizer2, tokenizers.SimpleTokenizer)
+        with self.assertRaises(ValueError):
+            tokenizers.get("lkfsahdkjlfh")
+
     def test_switching_extensibility(self):
         words = self._fill_tokenizer_vocab(self.tokenizer, min_word_length=10)
         self.tokenizer.disable_extensibility()
