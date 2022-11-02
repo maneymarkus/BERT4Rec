@@ -1,8 +1,8 @@
+from absl import logging
 import json
 import pathlib
 import tempfile
 import tensorflow as tf
-import time
 
 import bert4rec.evaluation as evaluation
 
@@ -10,6 +10,7 @@ import bert4rec.evaluation as evaluation
 class BaseEvaluatorTest(tf.test.TestCase):
     def setUp(self):
         super(BaseEvaluatorTest, self).setUp()
+        logging.set_verbosity(logging.DEBUG)
         # Testing base evaluator features with a concrete tokenizer implementation (as abstract classes
         # can't be instantiated)
         self.evaluator = evaluation.get()
@@ -19,6 +20,14 @@ class BaseEvaluatorTest(tf.test.TestCase):
 
     def tearDown(self):
         pass
+
+    def test_evaluator_factory_method(self):
+        evaluator1 = evaluation.get("bert4rec")
+        self.assertIsInstance(evaluator1, evaluation.BERT4RecEvaluator)
+        evaluator2 = evaluation.get()
+        self.assertIsInstance(evaluator2, evaluation.BERT4RecEvaluator)
+        with self.assertRaises(ValueError):
+            evaluation.get("slkfha")
 
     def test_save_results(self):
         tmpdir = tempfile.TemporaryDirectory()
