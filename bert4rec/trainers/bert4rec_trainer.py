@@ -15,9 +15,8 @@ class BERT4RecTrainer(BaseTrainer):
                          metrics: list = None):
 
         if optimizer is None:
-            optimizer_factory = optimizers.get("adamw")
             # use default values if no other optimizer is provided
-            optimizer = optimizer_factory.create_adam_w_optimizer()
+            optimizer = optimizers.get("adamw")
         self.optimizer = optimizer
 
         if loss is None:
