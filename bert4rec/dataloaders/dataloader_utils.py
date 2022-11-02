@@ -278,7 +278,8 @@ def split_dataset(ds: tf.data.Dataset,
 def make_batches(dataset: tf.data.Dataset,
                  buffer_size: int = None,
                  batch_size: int = 64,
-                 squeeze_tensors: bool = False) -> tf.data.Dataset:
+                 squeeze_tensors: bool = False,
+                 reshuffle_each_iteration: bool = False) -> tf.data.Dataset:
     """
     Combines consecutive elements of the given dataset into batches. Tensors may be squeezed if wanted,
     to prevent elements of the batched dataset to have a shape of [batch_size, 1, tokens].
@@ -292,6 +293,7 @@ def make_batches(dataset: tf.data.Dataset,
     the dimensions). Tensors can only be squeezed, if they have an "empty" dimension (e.g. a shape
     like this: [x, 1, y] has an empty middle dimension that can possibly be removed). Empty dimensions might
     occur due to preprocessing.
+    :param reshuffle_each_iteration: See: https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
     :return:
     """
     def squeeze_func(d: dict):
@@ -308,7 +310,7 @@ def make_batches(dataset: tf.data.Dataset,
                          f"determined. Please provide a buffer size.")
 
     return dataset \
-        .shuffle(buffer_size) \
+        .shuffle(buffer_size, reshuffle_each_iteration=reshuffle_each_iteration) \
         .batch(batch_size, num_parallel_calls=tf.data.AUTOTUNE) \
         .map(lambda d: squeeze_func(d) if squeeze_tensors else d) \
         .cache() \
