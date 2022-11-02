@@ -5,13 +5,13 @@ import string
 import tempfile
 import tensorflow as tf
 
-from bert4rec.dataloaders import BERT4RecDataloader
+from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils
 from bert4rec.model.bert4rec_model import BERTModel, BERT4RecModelWrapper, \
     _META_CONFIG_FILE_NAME, _TOKENIZER_VOCAB_FILE_NAME
 from bert4rec.model.components import networks
-from bert4rec.tokenizers import SimpleTokenizer
+from bert4rec import tokenizers
 from bert4rec.trainers import optimizers
-import tests.test_utils as utils
+import tests.test_utils as test_utils
 
 
 class BERT4RecModelTests(tf.test.TestCase):
@@ -19,117 +19,105 @@ class BERT4RecModelTests(tf.test.TestCase):
     def setUp(self):
         super(BERT4RecModelTests, self).setUp()
         logging.set_verbosity(logging.DEBUG)
-        self.vocab_size = 300
-        optimizer_factory = optimizers.get_optimizer_factory("bert4rec")
-        self.optimizer = optimizer_factory.create_adam_w_optimizer()
-
-        self.encoder = networks.BertEncoder(self.vocab_size)
-        self.bert_model = BERTModel(self.encoder)
-        self.bert_model.compile(
-            optimizer=self.optimizer,
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-        )
-        self.bert4rec_wrapper = BERT4RecModelWrapper(self.bert_model)
+        self.optimizer = optimizers.get()
 
     def tearDown(self):
-        self.vocab_size = None
-        self.encoder = None
-        self.bert_model = None
-        self.bert4rec_wrapper = None
+        self.optimizer = None
+
+    def _build_model(self, vocab_size: int, optimizer: tf.keras.optimizers.Optimizer = None):
+        bert_encoder = networks.BertEncoder(vocab_size=vocab_size)
+        bert_model = BERTModel(bert_encoder)
+        if optimizer is None:
+            optimizer = self.optimizer
+        bert_model.compile(
+            optimizer=optimizer,
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        )
+        # makes sure the weights are built
+        _ = bert_model(bert_model.inputs)
+        return bert_model
 
     def test_load_model(self):
+        ds_size = 1
+        vocab_size = 200
         tmpdir = tempfile.TemporaryDirectory()
         save_path = pathlib.Path(tmpdir.name)
 
-        _ = self.bert_model(self.bert_model.inputs)
+        bert_model = self._build_model(vocab_size)
+        wrapper = BERT4RecModelWrapper(bert_model)
 
-        # should throw an error when trying to save a not fully initialized model
-        with self.assertRaises(RuntimeError):
-            self.bert4rec_wrapper.save(save_path)
+        dataset, dataloader = test_utils.generate_random_sequence_dataset(ds_size)
+        batches = dataloader_utils.make_batches(dataset)
+        random_input = None
+        for el in batches.take(1):
+            random_input = el
 
-        # initialize model fully by building the loss
-        random_sequence = [random.choice(string.ascii_letters) for _ in range(100)]
-        dataloader = BERT4RecDataloader()
-        inputs = dataloader.feature_preprocessing(None, random_sequence)
-        self.bert_model.train_step(inputs)
-
-        self.bert4rec_wrapper.save(save_path)
-
-        self.bert4rec_wrapper = None
-        self.bert_model = None
-        self.encoder = None
-
-        # reloading just the model
-        loaded_assets = BERT4RecModelWrapper.load(save_path)
-        self.bert4rec_wrapper = loaded_assets["model"]
-        self.bert_model = self.bert4rec_wrapper.bert_model
-        self.encoder = self.bert_model.encoder
-
-        self.assertIsInstance(self.bert4rec_wrapper, BERT4RecModelWrapper,
-                              f"The loaded model wrapper should be an instance of {BERT4RecModelWrapper}, "
-                              f"but is an instance of: {type(self.bert4rec_wrapper)}")
-        # assertions fail because (re)loading a saved model does not instantiate the original class yet
-        self.assertIsInstance(self.bert_model, BERTModel,
-                              f"The loaded (in the model wrapper contained) model should be an instance of "
-                              f"{BERTModel} but is actually an instance of: {type(self.bert_model)}")
-        self.assertIsInstance(self.encoder, networks.BertEncoder,
-                              f"The loaded encoder layer (contained in the loaded model) should be an instance of "
-                              f"{networks.BertEncoder} but actually is an instance of: "
-                              f"{type(self.encoder)}")
-
-        # reloading a model with tokenizer
-
-        self.encoder = networks.BertEncoder(self.vocab_size)
-        self.bert_model = BERTModel(self.encoder)
-        self.bert4rec_wrapper = BERT4RecModelWrapper(self.bert_model)
-        tokenizer = SimpleTokenizer()
+        # also test reloading of tokenizer
+        tokenizer = tokenizers.get()
         # makes sure that the tokenizer has a vocab of at least one word
         tokenizer.tokenize("word")
 
-        # makes sure the weights are built (note: the model is not compiled yet; weights are necessary for saving
-        # compilation info not)
-        _ = self.bert_model(self.bert_model.inputs)
+        # the one train step to build the compiled metrics and loss
+        bert_model.train_step(random_input)
 
-        self.bert4rec_wrapper.save(save_path, tokenizer)
+        wrapper.save(save_path, tokenizer)
 
-        self.bert4rec_wrapper = None
-        self.bert_model = None
-        self.encoder = None
-        tokenizer = None
+        del wrapper, bert_model, tokenizer
 
         loaded_assets = BERT4RecModelWrapper.load(save_path)
-        self.bert4rec_wrapper = loaded_assets["model"]
-        self.bert_model = self.bert4rec_wrapper.bert_model
-        self.encoder = self.bert_model.encoder
+        reloaded_wrapper = loaded_assets["model_wrapper"]
+        reloaded_bert_model = reloaded_wrapper.bert_model
+        reloaded_encoder = reloaded_bert_model.encoder
         tokenizer = loaded_assets["tokenizer"]
 
-        self.assertIsInstance(self.bert4rec_wrapper, BERT4RecModelWrapper,
+        self.assertIsInstance(reloaded_wrapper, BERT4RecModelWrapper,
                               f"The loaded model wrapper should be an instance of {BERT4RecModelWrapper}, "
-                              f"but is an instance of: {type(self.bert4rec_wrapper)}")
+                              f"but is an instance of: {type(reloaded_wrapper)}")
         # assertions fail because (re)loading a saved model does not instantiate the original class yet
-        self.assertIsInstance(self.bert_model, BERTModel,
+        self.assertIsInstance(reloaded_bert_model, BERTModel,
                               f"The loaded (in the model wrapper contained) model should be an instance of "
-                              f"{BERTModel} but is actually an instance of: {type(self.bert_model)}")
-        self.assertIsInstance(self.encoder, networks.BertEncoder,
+                              f"{BERTModel} but is actually an instance of: {type(reloaded_bert_model)}")
+        self.assertIsInstance(reloaded_encoder, networks.BertEncoder,
                               f"The loaded encoder layer (contained in the loaded model) should be an instance of "
                               f"{networks.BertEncoder} but actually is an instance of: "
-                              f"{type(self.encoder)}")
-        self.assertIsInstance(tokenizer, SimpleTokenizer,
+                              f"{type(reloaded_encoder)}")
+        self.assertIsInstance(tokenizer, tokenizers.SimpleTokenizer,
                               f"Saving a model with a tokenizer should actually also save the tokenizer "
                               f"vocab and reload it as well again. In this case a new instance of "
-                              f"{SimpleTokenizer} should have been created with the vocab restored.")
+                              f"{tokenizers.SimpleTokenizer} should have been created with the vocab restored, "
+                              f"but actually got: {tokenizer}")
         self.assertEqual(tokenizer.get_vocab_size(), 1,
                          f"Reloading the tokenizer along with the saved model should restore its vocab. "
                          f"Expected vocab size: 1. Restored vocab size: {tokenizer.get_vocab_size()}")
 
     def test_save_model(self):
+        ds_size = 1
+        vocab_size = 200
         tmpdir = tempfile.TemporaryDirectory()
         save_path = pathlib.Path(tmpdir.name)
+
+        bert_model = self._build_model(vocab_size)
+        wrapper = BERT4RecModelWrapper(bert_model)
+
         # makes sure the weights are built
-        _ = self.bert_model(self.bert_model.inputs)
+        _ = bert_model(bert_model.inputs)
+
+        # should throw an error when trying to save a not fully initialized model
+        # i.e. model can't be saved without at least one training step as this builds the loss and metrics
+        with self.assertRaises(RuntimeError):
+            wrapper.save(save_path)
+
+        dataset, dataloader = test_utils.generate_random_sequence_dataset(ds_size)
+        batches = dataloader_utils.make_batches(dataset)
+        random_input = None
+        for el in batches.take(1):
+            random_input = el
+
+        # the one train step to build the compiled metrics and loss
+        bert_model.train_step(random_input)
 
         # save only model and meta config
-        self.bert4rec_wrapper.save(save_path)
+        wrapper.save(save_path)
         assets_path = save_path.joinpath("assets")
         keras_metadata_path = save_path.joinpath("keras_metadata.pb")
         meta_config_path = save_path.joinpath(_META_CONFIG_FILE_NAME)
@@ -146,35 +134,42 @@ class BERT4RecModelTests(tf.test.TestCase):
         self.assertTrue(variables_path.is_dir(),
                         f"the saved model directory should contain a 'variables' directory.")
 
-        tokenizer = SimpleTokenizer()
+        tokenizer = tokenizers.get()
         # makes sure, vocab has at least one entry
         tokenizer.tokenize("test")
 
         # save model and tokenizer vocab and meta config
-        self.bert4rec_wrapper.save(save_path, tokenizer)
+        wrapper.save(save_path, tokenizer)
         vocab_path = save_path.joinpath(_TOKENIZER_VOCAB_FILE_NAME)
 
         self.assertTrue(vocab_path.is_file(),
                         f"the saved model directory should contain a '{_TOKENIZER_VOCAB_FILE_NAME}' file.")
 
     def test_rank_items(self):
+        ds_size = 1
         number_rank_items = 7
         sequence_length = 50
 
-        dataloader = BERT4RecDataloader(100, 5)
-        sequence = utils.generate_random_word_list(size=sequence_length)
+        prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size)
+        prepared_batches = dataloader_utils.make_batches(prepared_ds)
+        vocab_size = dataloader.tokenizer.get_vocab_size()
 
-        encoder_input = dataloader.feature_preprocessing(None, sequence)
+        bert_model = self._build_model(vocab_size)
+        wrapper = BERT4RecModelWrapper(bert_model)
 
         # initialize weights
-        _ = self.bert_model(self.bert_model.inputs)
+        _ = bert_model(bert_model.inputs)
+
+        encoder_input = None
+        for el in prepared_batches.take(1):
+            encoder_input = el
 
         # use just one generic item list for ranking for all masked tokens
-        rank_items_1 = [random.randint(0, self.vocab_size) for _ in range(number_rank_items)]
+        rank_items_1 = [random.randint(0, vocab_size) for _ in range(number_rank_items)]
 
-        rankings_1, probabilities_1 = self.bert4rec_wrapper.rank(encoder_input,
-                                                                 rank_items_1,
-                                                                 encoder_input["masked_lm_positions"])
+        rankings_1, probabilities_1 = wrapper.rank(encoder_input,
+                                                   rank_items_1,
+                                                   encoder_input["masked_lm_positions"])
 
         self.assertEqual(len(rankings_1[0]), len(probabilities_1[0]),
                          f"The length of the ranking list ({len(rankings_1[0])}) should be equal to the "
@@ -196,14 +191,14 @@ class BERT4RecModelTests(tf.test.TestCase):
         # use individual ranking lists for each token -> shape of rank_items list: (batch, tokens, rank_items)
         rank_items_2 = [
             [
-                [random.randint(0, self.vocab_size) for _ in range(random.randint(3, 10))]
+                [random.randint(0, vocab_size) for _ in range(random.randint(3, 10))]
                 for _ in range(len(encoder_input["masked_lm_positions"][0]))
             ]
         ]
 
-        rankings_2, probabilities_2 = self.bert4rec_wrapper.rank(encoder_input,
-                                                                 rank_items_2,
-                                                                 encoder_input["masked_lm_positions"])
+        rankings_2, probabilities_2 = wrapper.rank(encoder_input,
+                                                   rank_items_2,
+                                                   encoder_input["masked_lm_positions"])
 
         # iterate over batches
         for b in range(len(rankings_2)):
