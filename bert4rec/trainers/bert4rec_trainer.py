@@ -47,8 +47,9 @@ class BERT4RecTrainer(BaseTrainer):
                 save_best_only=True
             )
             self.append_callback(model_checkpoint_callback)
-            if checkpoint_path.exists():
-                self.model.load_weights(checkpoint_path)
+            if checkpoint_path.parent.is_dir():
+                if tf.train.latest_checkpoint(checkpoint_path.parent) is not None:
+                    self.model.load_weights(checkpoint_path)
 
         history = self.model.fit(x=train_ds,
                                  validation_data=val_ds,
