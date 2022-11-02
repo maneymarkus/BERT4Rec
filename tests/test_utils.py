@@ -45,7 +45,8 @@ def generate_random_sequence_dataset(ds_size: int = 1000,
     sequences = tf.ragged.constant(sequence_list)
     ds = tf.data.Dataset.from_tensor_slices((subject_list, sequences))
 
-    dataloader = BERT4RecDataloader(max_seq_len=seq_max_len, max_predictions_per_seq=5)
+    if dataloader is None:
+        dataloader = BERT4RecDataloader(max_seq_len=seq_max_len, max_predictions_per_seq=5)
 
     dataloader.generate_vocab(sequences)
     prepared_ds = dataloader.preprocess_dataset(ds, finetuning=True)
