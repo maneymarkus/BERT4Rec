@@ -10,7 +10,7 @@ from bert4rec.dataloaders.bert4rec_dataloaders import BERT4RecDataloader, BERT4R
 import bert4rec.dataloaders.dataloader_utils as dataloader_utils
 from bert4rec.model.components import layers, networks
 import bert4rec.model.model_utils as utils
-from bert4rec.tokenizers import BaseTokenizer, tokenizer_factory
+import bert4rec.tokenizers as tokenizers
 from bert4rec.trainers import optimizers
 
 _ENCODER_CONFIG_FILE_NAME = "encoder_config.json"
@@ -31,16 +31,13 @@ train_step_signature = [{
 
 class BERTModel(tf.keras.Model):
     """
-    TODO: implement correct reloading
-    NOTE: Reloading the model does not work properly, even with the custom_objects property set and all
-    custom layers registered, `tf.keras.models.load_model()` does not reload into this class but into a
-    tf.keras.saving.saved_model.load.BERTModel which is not the same!
     NOTE: The model can only be saved, when completely initialized (when using the saving api.
     For a not further known reason (but empirically tested), saving a subclassed Keras model with a
     custom `train_step()` function throws an error when not fully initialized. In detail, this line
     `loss = self.compiled_loss(y_true, y_pred, regularization_losses=self.losses)` causes the error. Fully
     initialized means in this context that the given metrics and loss(es) in the `model.compile()` call are not
-    built but only set. See `init__()` of the LossesContainer object (wrapper for compiled_metrics property):
+    built but only set/initialized. See e.g. `init__()` method of the LossesContainer object
+    (wrapper for compiled_metrics property):
     https://github.com/keras-team/keras/blob/3cec735c5602a1bd9880b1b5735c5ce64a94eb76/keras/engine/compile_utils.py#L117
     """
 
@@ -70,7 +67,7 @@ class BERTModel(tf.keras.Model):
         inputs = copy.copy(encoder.inputs)
 
         self.masked_lm = customized_masked_lm or layers.MaskedLM(
-            self.encoder._embedding_layer.embeddings,
+            self.encoder.get_embedding_table(),
             activation=mlm_activation,
             initializer=mlm_initializer,
             name="cls/predictions"
@@ -87,7 +84,7 @@ class BERTModel(tf.keras.Model):
         self.inputs = inputs
 
     @property
-    def code(self):
+    def identifier(self):
         return "bert4rec"
 
     def call(self, inputs, training=None, mask=None):
@@ -194,59 +191,10 @@ class BERT4RecModelWrapper:
             }
         )
 
-    @classmethod
-    def load(cls, save_path: pathlib.Path, mode: int = 0) -> dict:
-        """
-        Loads and returns all available assets in conjunction with the ml model. Loads at least a saved
-        BERT4Rec model. Depending on the configuration might also load tokenizer with learnt vocab
-        TODO: enable correct reloading
-
-        :param save_path: Path to the model directory
-        :param mode: The mode determines from where the model is loaded. Available modes are 0, 1, 2.
-        0 is default and loads the model relative from the project root. 1 loads the model relative
-        from the virtual environment and 2 loads it relative from the current working directory. Modes 0 and 1
-        also use predefined directories (saved_models). See `utils.determine_model_path()` for more info
-        :return: Dict with all loaded assets
-        """
-        save_path = utils.determine_model_path(save_path, mode)
-        loaded_assets = dict()
-        loaded_bert = tf.keras.models.load_model(save_path, custom_objects={
-            "BERTModel": BERTModel,
-            "AdamWeightDecay": optimizers.AdamWeightDecay,
-            "WarmUp": optimizers.WarmUp,
-            "BertEncoderV2": networks.BertEncoder,
-            "_approx_gelu": networks.bert_encoder._approx_gelu,
-            "OnDeviceEmbedding": layers.OnDeviceEmbedding,
-            "PositionEmbedding": layers.PositionEmbedding,
-            "SelfAttentionMask": layers.SelfAttentionMask,
-            "TransformerEncoderBlock": layers.TransformerEncoderBlock,
-            "RelativePositionEmbedding": layers.RelativePositionEmbedding,
-            "RelativePositionBias": layers.RelativePositionBias,
-            "_relative_position_bucket": layers.position_embedding._relative_position_bucket,
-            "get_mask": layers.self_attention_mask.get_mask,
-        })
-        wrapper = cls(loaded_bert)
-        loaded_assets["model"] = wrapper
-
-        try:
-            with open(save_path.joinpath(_META_CONFIG_FILE_NAME)) as jf:
-                meta_config = json.load(jf)
-                wrapper._meta_config = meta_config
-
-                if "tokenizer" in meta_config and meta_config["tokenizer"] is not None:
-                    tokenizer = tokenizer_factory.get_tokenizer(meta_config["tokenizer"])
-                    tokenizer.import_vocab_from_file(save_path.joinpath(_TOKENIZER_VOCAB_FILE_NAME))
-                    loaded_assets["tokenizer"] = tokenizer
-
-        except FileNotFoundError:
-            logging.error(f"The meta configuration/information json file (meta_config.json) could not be found "
-                          f"in the supposed model directory: {save_path}")
-
-        return loaded_assets
-
-    def save(self, save_path: pathlib.Path, tokenizer: BaseTokenizer = None, mode: int = 0) -> True:
+    def save(self, save_path: pathlib.Path, tokenizer: tokenizers.BaseTokenizer = None, mode: int = 0) -> True:
         """
         Saves a model to the disk. If the tokenizer is given, saves the used vocab from the tokenizer as well.
+
         NOTE: The model can only be saved successfully, when completely initialized. See model doc (further above)
         for more information.
 
@@ -260,6 +208,9 @@ class BERT4RecModelWrapper:
         """
         save_path = utils.determine_model_path(save_path, mode)
 
+        if self.bert_model.compiled_loss is None:
+            raise RuntimeError("The model can't be saved without a loss. The model needs to be compiled first.")
+
         if self.bert_model.compiled_metrics and not self.bert_model.compiled_metrics._built:
             raise RuntimeError("The model can't be saved yet, as it is not fully instantiated and will "
                                "throw an error during saving. See model docs for more information.")
@@ -268,13 +219,58 @@ class BERT4RecModelWrapper:
 
         if tokenizer:
             tokenizer.export_vocab_to_file(save_path.joinpath(_TOKENIZER_VOCAB_FILE_NAME))
-            self.update_meta({"tokenizer": tokenizer.code})
+            self.update_meta({"tokenizer": tokenizer.identifier})
 
         # save meta config to file
         with open(save_path.joinpath(_META_CONFIG_FILE_NAME), "w") as f:
             json.dump(self._meta_config, f, indent=4)
 
         return True
+
+    @classmethod
+    def load(cls, save_path: pathlib.Path, mode: int = 0) -> dict:
+        """
+        Loads and returns all available assets in conjunction with the ml model. Loads at least a saved
+        BERT4Rec model. Depending on the configuration might also load tokenizer with learnt vocab
+
+        :param save_path: Path to the model directory
+        :param mode: The mode determines from where the model is loaded. Available modes are 0, 1, 2.
+        0 is default and loads the model relative from the project root. 1 loads the model relative
+        from the virtual environment and 2 loads it relative from the current working directory. Modes 0 and 1
+        also use predefined directories (saved_models). See `utils.determine_model_path()` for more info
+        :return: Dict with all loaded assets
+        """
+        save_path = utils.determine_model_path(save_path, mode)
+        loaded_assets = dict()
+        loaded_bert = tf.keras.models.load_model(save_path, custom_objects={
+            "BERTModel": BERTModel,
+            "AdamWeightDecay": optimizers.AdamWeightDecay,
+            "BertEncoderV2": networks.BertEncoder,
+            "OnDeviceEmbedding": layers.OnDeviceEmbedding,
+            "PositionEmbedding": layers.PositionEmbedding,
+            "SelfAttentionMask": layers.SelfAttentionMask,
+            "TransformerEncoderBlock": layers.TransformerEncoderBlock,
+            "RelativePositionEmbedding": layers.RelativePositionEmbedding,
+            "RelativePositionBias": layers.RelativePositionBias,
+        })
+        wrapper = cls(loaded_bert)
+        loaded_assets["model_wrapper"] = wrapper
+
+        try:
+            with open(save_path.joinpath(_META_CONFIG_FILE_NAME)) as jf:
+                meta_config = json.load(jf)
+                wrapper._meta_config = meta_config
+
+                if "tokenizer" in meta_config and meta_config["tokenizer"] is not None:
+                    tokenizer = tokenizers.get(meta_config["tokenizer"])
+                    tokenizer.import_vocab_from_file(save_path.joinpath(_TOKENIZER_VOCAB_FILE_NAME))
+                    loaded_assets["tokenizer"] = tokenizer
+
+        except FileNotFoundError:
+            logging.error(f"The meta configuration/information json file ({_META_CONFIG_FILE_NAME}) could "
+                          f"not be found in the supposed model directory: {save_path}")
+
+        return loaded_assets
 
     def rank(self,
              encoder_input: dict,
@@ -302,12 +298,10 @@ class BERT4RecModelWrapper:
         and the second value containing the probabilities (of each item) (not sorted! -> can be cross-referenced
         with the original rank_items list)
         """
-        # TODO: save and reload model correctly (i.e. reloading the model into the right class again to make
-        # functions available (as e.g. encoder.get_embedding_table()))
-        gathered_embeddings = self.bert_model.encoder._embedding_layer.embeddings
+        gathered_embeddings = self.bert_model.encoder.get_embedding_table()
 
         if rank_items is not None and type(rank_items[0]) is not list:
-            gathered_embeddings = tf.gather(self.bert_model.encoder._embedding_layer.embeddings, rank_items)
+            gathered_embeddings = tf.gather(self.bert_model.encoder.get_embedding_table(), rank_items)
 
         encoder_output = self.bert_model(encoder_input)
 
@@ -326,7 +320,7 @@ class BERT4RecModelWrapper:
                     if rank_items is not None and type(rank_items[0]) is list:
                         # => individual ranking list for each token (output)
                         gathered_embeddings = \
-                            tf.gather(self.bert_model.encoder._embedding_layer.embeddings, rank_items[b][i])
+                            tf.gather(self.bert_model.encoder.get_embedding_table(), rank_items[b][i])
                         rank_items_list = rank_items[b][i]
                     token_logits = sequence_output[b, token_index, :]
                     vocab_probabilities, ranking = utils.rank_items(token_logits, gathered_embeddings, rank_items_list)
@@ -364,7 +358,8 @@ if __name__ == "__main__":
     dataloader = BERT4RecML1MDataloader()
     dataloader.generate_vocab()
     ds = dataloader.preprocess_dataset()
-    for element in ds.take(1):
+    batches = dataloader_utils.make_batches(ds, batch_size=8)
+    for element in batches.take(1):
         example = element
     # print(example)
     tokenizer = dataloader.get_tokenizer()
@@ -374,12 +369,11 @@ if __name__ == "__main__":
     model.compile(optimizer="adam", loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True))
     _ = model(model.inputs)
     wrapper = BERT4RecModelWrapper(model)
-    embedding_table = model.encoder._embedding_layer.embeddings
+    embedding_table = model.encoder.get_embedding_table()
     gathered_embeddings = tf.gather(embedding_table, [0, 3, 30519, 30521])
 
     predictions = model(example)
     print(predictions)
-    exit()
 
     # See model docs to understand, why this is necessary
     model.train_step(example)
@@ -388,12 +382,12 @@ if __name__ == "__main__":
     del wrapper, model, bert_encoder
     loaded_assets = BERT4RecModelWrapper.load(save_path)
     loaded_tokenizer = loaded_assets["tokenizer"]
-    loaded_wrapper = loaded_assets["model"]
+    loaded_wrapper = loaded_assets["model_wrapper"]
 
     print(loaded_wrapper.bert_model)
     print(loaded_wrapper.bert_model(example))
 
     rank_items = [random.randint(0, 30521) for _ in range(5)]
-    # rankings, probabilities = loaded_wrapper.rank(example, rank_items, example["masked_lm_positions"])
+    rankings, probabilities = loaded_wrapper.rank(example, rank_items, example["masked_lm_positions"])
     print(rank_items)
-    # print(rankings)
+    print(rankings)
