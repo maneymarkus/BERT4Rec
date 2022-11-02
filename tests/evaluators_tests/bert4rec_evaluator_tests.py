@@ -1,9 +1,10 @@
+from absl import logging
 import copy
 import pathlib
 import random
 import tensorflow as tf
 
-from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils
+from bert4rec.dataloaders import dataloader_utils
 import bert4rec.evaluation as evaluation
 from bert4rec.model import BERTModel, BERT4RecModelWrapper
 from bert4rec.model.components import networks
@@ -13,6 +14,8 @@ import tests.test_utils as test_utils
 
 class Bert4RecEvaluatorTest(tf.test.TestCase):
     def setUp(self):
+        super(Bert4RecEvaluatorTest, self).setUp()
+        logging.set_verbosity(logging.DEBUG)
         self.evaluator = evaluation.get()
 
     def tearDown(self):
