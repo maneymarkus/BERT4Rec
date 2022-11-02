@@ -11,8 +11,6 @@ from bert4rec.model.components import layers
 _Initializer = Union[str, tf.keras.initializers.Initializer]
 _Activation = Union[str, Callable[..., Any]]
 
-_approx_gelu = tf.keras.layers.Lambda(lambda x: tf.keras.activations.gelu(x, approximate=True))
-
 
 class BertEncoderV2(tf.keras.layers.Layer):
     """Bi-directional Transformer-based encoder network.
@@ -72,7 +70,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
             max_sequence_length: int = 512,
             type_vocab_size: int = 16,
             inner_dim: int = 3072,
-            inner_activation: _Activation = _approx_gelu,
+            inner_activation: _Activation = "gelu",
             output_dropout: float = 0.1,
             attention_dropout: float = 0.1,
             initializer: _Initializer = tf.keras.initializers.TruncatedNormal(
@@ -149,7 +147,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
             layer = layers.TransformerEncoderBlock(
                 num_attention_heads=num_attention_heads,
                 inner_dim=inner_dim,
-                inner_activation=inner_activation,
+                inner_activation=activation,
                 output_dropout=output_dropout,
                 attention_dropout=attention_dropout,
                 norm_first=norm_first,
