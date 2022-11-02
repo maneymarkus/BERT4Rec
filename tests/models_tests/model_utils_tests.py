@@ -3,7 +3,6 @@ import pathlib
 import random
 import tensorflow as tf
 
-from bert4rec.dataloaders import BERT4RecDataloader
 import bert4rec.dataloaders.dataloader_utils as dataloader_utils
 from bert4rec.model import BERTModel
 from bert4rec.model.components import networks

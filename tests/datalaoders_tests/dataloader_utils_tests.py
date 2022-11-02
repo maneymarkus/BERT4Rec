@@ -3,7 +3,6 @@ import pandas as pd
 import random
 import string
 import tensorflow as tf
-import tensorflow_text as tf_text
 
 import bert4rec.dataloaders.dataloader_utils as utils
 
