@@ -2,7 +2,7 @@ import pathlib
 import tensorflow as tf
 
 from bert4rec.trainers.base_trainer import BaseTrainer
-from bert4rec.trainers.optimizers import get_optimizer_factory
+from bert4rec.trainers import optimizers
 
 
 class BERT4RecTrainer(BaseTrainer):
@@ -15,7 +15,7 @@ class BERT4RecTrainer(BaseTrainer):
                          metrics: list = None):
 
         if optimizer is None:
-            optimizer_factory = get_optimizer_factory("bert4rec")
+            optimizer_factory = optimizers.get("adamw")
             # use default values if no other optimizer is provided
             optimizer = optimizer_factory.create_adam_w_optimizer()
         self.optimizer = optimizer
