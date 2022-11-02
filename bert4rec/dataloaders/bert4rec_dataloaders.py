@@ -36,19 +36,14 @@ class BERT4RecDataloader(BaseDataloader):
         self.tokenizer = tokenizer
 
         self._PAD_TOKEN = "[PAD]"
-        self._START_TOKEN = "[CLS]"
-        self._END_TOKEN = "[SEP]"
         self._MASK_TOKEN = "[MASK]"
         self._RANDOM_TOKEN = "[RANDOM]"
         self._UNK_TOKEN = "[UNK]"
         self._PAD_TOKEN_ID = self.tokenizer.tokenize(self._PAD_TOKEN)
-        self._START_TOKEN_ID = self.tokenizer.tokenize(self._START_TOKEN)
-        self._END_TOKEN_ID = self.tokenizer.tokenize(self._END_TOKEN)
         self._MASK_TOKEN_ID = self.tokenizer.tokenize(self._MASK_TOKEN)
         self._RANDOM_TOKEN_ID = self.tokenizer.tokenize(self._RANDOM_TOKEN)
         self._UNK_TOKEN_ID = self.tokenizer.tokenize(self._UNK_TOKEN)
-        self._SPECIAL_TOKENS = [self._PAD_TOKEN, self._UNK_TOKEN, self._MASK_TOKEN, self._RANDOM_TOKEN,
-                                self._START_TOKEN, self._END_TOKEN]
+        self._SPECIAL_TOKENS = [self._PAD_TOKEN, self._UNK_TOKEN, self._MASK_TOKEN, self._RANDOM_TOKEN]
         self._MAX_PREDICTIONS_PER_SEQ = max_predictions_per_seq
         self._MAX_SEQ_LENGTH = max_seq_len
         self.masked_lm_prob = masked_lm_prob
@@ -173,7 +168,7 @@ class BERT4RecDataloader(BaseDataloader):
                     input_word_ids,
                     self._MAX_PREDICTIONS_PER_SEQ,
                     self._MASK_TOKEN_ID,
-                    [self._START_TOKEN_ID, self._END_TOKEN_ID, self._UNK_TOKEN_ID, self._PAD_TOKEN_ID],
+                    [self._UNK_TOKEN_ID, self._PAD_TOKEN_ID],
                     self.tokenizer.get_vocab_size(),
                     selection_rate=self.masked_lm_prob,
                     mask_token_rate=self.mask_token_rate,
