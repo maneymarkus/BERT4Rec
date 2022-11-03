@@ -95,7 +95,7 @@ class BaseTokenizer(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def detokenize(self, token: str, drop_tokens: list[str] = None):
+    def detokenize(self, token, drop_tokens: list[str] = None):
         """
         Return the corresponding string the given `token` represents
 
