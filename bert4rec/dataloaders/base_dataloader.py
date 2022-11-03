@@ -57,6 +57,10 @@ class BaseDataloader(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def prepare_inference(self, sequence):
+        pass
+
+    @abc.abstractmethod
     def generate_vocab(self, source=None) -> True:
         """
         Fills the vocab of the tokenizer with items from the respective dataset or given source
