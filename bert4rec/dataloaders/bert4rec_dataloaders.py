@@ -282,6 +282,13 @@ class BERT4RecDataloader(BaseDataloader):
         sequence.append(self._MASK_TOKEN)
 
         preprocessed_sequence = self.feature_preprocessing(None, sequence, False, False)
+        # remove user id key from dict as it is None
+        del preprocessed_sequence["user_id"]
+
+        # expand dimension of tensors since encoder needs inputs of dimension 2
+        for key, value in preprocessed_sequence.items():
+            if tf.is_tensor(value):
+                preprocessed_sequence[key] = tf.expand_dims(value, axis=0)
 
         # no masked lm applied here, as inference does not have a ground truth
 
