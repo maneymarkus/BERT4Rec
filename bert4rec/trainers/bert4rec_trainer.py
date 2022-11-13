@@ -1,8 +1,10 @@
+from absl import logging
 import pathlib
 import tensorflow as tf
 
+from bert4rec.dataloaders import BaseDataloader, dataloader_utils
 from bert4rec.trainers.base_trainer import BaseTrainer
-from bert4rec.trainers import optimizers
+from bert4rec.trainers import optimizers, trainer_utils
 
 
 class BERT4RecTrainer(BaseTrainer):
@@ -20,14 +22,13 @@ class BERT4RecTrainer(BaseTrainer):
         self.optimizer = optimizer
 
         if loss is None:
-            # Define loss function. Ignore class is set up to ignore "pad class". See:
-            # https://www.tensorflow.org/api_docs/python/tf/keras/losses/SparseCategoricalCrossentropy
-            loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, ignore_class=0)
+            loss = trainer_utils.MaskedSparseCategoricalCrossentropy()
         self.loss = loss
 
         if metrics is None:
             metrics = [
-                tf.keras.metrics.SparseCategoricalAccuracy()
+                tf.keras.metrics.SparseCategoricalAccuracy(),
+                trainer_utils.masked_accuracy
             ]
         self.metrics = metrics
 
@@ -43,7 +44,7 @@ class BERT4RecTrainer(BaseTrainer):
             model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
                 filepath=checkpoint_path,
                 save_weights_only=True,
-                monitor="val_sparse_categorical_accuracy",
+                monitor="val_masked_accuracy",
                 save_best_only=True
             )
             self.append_callback(model_checkpoint_callback)
@@ -55,6 +56,89 @@ class BERT4RecTrainer(BaseTrainer):
                                  epochs=epochs,
                                  callbacks=self.callbacks)
         return history
+
+    def smart_training(self,
+                       dataloader: BaseDataloader,
+                       checkpoint_path: pathlib.Path = None,
+                       epochs: int = 500,
+                       early_stopping_patience: int = 3,
+                       make_batches_params: dict = {}) -> list:
+        """
+        Smart training will initialize an EarlyStoppingCallback. Then it trains the given model either until
+        the epochs have been run through or until the early stopping callback executed. If the latter is the
+        case then it will preprocess the training data again (to have the masked lm applied differently) and restart
+        training with the remaining epochs.
+
+        :param dataloader:
+        :param checkpoint_path:
+        :param epochs:
+        :param early_stopping_patience:
+        :param make_batches_params:
+        :return:
+        """
+
+        if make_batches_params is None:
+            make_batches_params = {}
+        early_stopping_callback = tf.keras.callbacks.EarlyStopping(
+            monitor="val_loss",
+            patience=early_stopping_patience,
+            verbose=1,
+            restore_best_weights=True
+        )
+        self.append_callback(early_stopping_callback)
+
+        histories = []
+
+        era = 1
+        while epochs > 0:
+            print(f"Era {era}:")
+            # prepare training data (again, if epochs are left still)
+            train_ds, val_ds, test_ds = dataloader.prepare_training()
+            train_batches = dataloader_utils.make_batches(train_ds, **make_batches_params)
+            val_batches = dataloader_utils.make_batches(val_ds, **make_batches_params)
+
+            # train the model
+            history = self.train(train_batches, val_batches, checkpoint_path, epochs)
+            histories.append(history)
+
+            # get trained epochs via loss attribute of the history object (each epoch has a loss)
+            trained_epochs = len(history["loss"])
+            epochs -= trained_epochs
+            era += 1
+
+        return histories
+
+    def train_extended(self,
+                       dataloader: BaseDataloader,
+                       checkpoint_path: pathlib.Path = None,
+                       epochs: int = 25,
+                       eras: int = 25,
+                       make_batches_params: dict = {}) -> list:
+        """
+
+
+        :param dataloader:
+        :param checkpoint_path:
+        :param epochs:
+        :param eras:
+        :param make_batches_params:
+        :return:
+        """
+
+        histories = []
+
+        for era in range(eras):
+            print(f"Era {era}/{eras}:")
+            # prepare training data (again, if epochs are left still)
+            train_ds, val_ds, test_ds = dataloader.prepare_training()
+            train_batches = dataloader_utils.make_batches(train_ds, **make_batches_params)
+            val_batches = dataloader_utils.make_batches(val_ds, **make_batches_params)
+
+            # train the model
+            history = self.train(train_batches, val_batches, checkpoint_path, epochs)
+            histories.append(history)
+
+        return histories
 
     def validate(self):
         pass
