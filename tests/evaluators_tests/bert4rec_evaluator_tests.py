@@ -76,7 +76,9 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         config_id = "ml-1m_128.json"
         model_wrapper = self._create_model_wrapper(config_id, vocab_size)
 
-        expected_metrics = copy.copy(self.evaluator.get_metrics())
+        initial_metrics = [
+            copy.copy(metric_object) for metric_object in self.evaluator.get_metrics()
+        ]
 
         # usage of set in between to eliminate duplicates
         random_popular_items = list(set([random.randint(0, vocab_size)
@@ -86,15 +88,18 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
             model_wrapper, prepared_batches, popular_items_ranking=random_popular_items
         )
 
-        self.assertNotEqual(metrics, expected_metrics,
-                            f"After evaluating the metrics should be filled and not in their initial state anymore.")
+        for i, metric in enumerate(metrics):
+            self.assertNotEqual(metric.result(), initial_metrics[i].result(),
+                                f"After evaluating the metrics should be filled and not in their initial state "
+                                f"anymore.")
 
         self.evaluator.reset_metrics()
 
-        self.assertEqual(self.evaluator.get_metrics(), expected_metrics,
-                         f"After resetting the metrics they should be in their initial state again.\n"
-                         f"Expected: {expected_metrics}\n"
-                         f"Got: {self.evaluator.get_metrics()}")
+        for i, metric in enumerate(self.evaluator.get_metrics()):
+            self.assertEqual(metric.result(), initial_metrics[i].result(),
+                             f"After resetting the metrics they should be in their initial state again.\n"
+                             f"Expected: {initial_metrics}\n"
+                             f"Got: {self.evaluator.get_metrics()}")
 
 
 if __name__ == '__main__':

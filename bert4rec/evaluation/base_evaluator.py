@@ -4,21 +4,23 @@ import pathlib
 import tensorflow as tf
 
 from bert4rec.dataloaders import BaseDataloader
+from bert4rec.evaluation.evaluation_metrics import EvaluationMetric
 from bert4rec.model import BERT4RecModelWrapper
 
 
 class BaseEvaluator(abc.ABC):
-    def __init__(self, sample_popular: bool = True):
+    def __init__(self, metrics: list[EvaluationMetric], sample_popular: bool = True):
         self.sample_popular = sample_popular
-        self._metrics = dict()
+        self._metrics = metrics
         self.reset_metrics()
 
-    @abc.abstractmethod
-    def reset_metrics(self):
-        pass
+    def reset_metrics(self) -> None:
+        for metric in self._metrics:
+            metric.reset()
 
     @abc.abstractmethod
-    def evaluate(self, wrapper: BERT4RecModelWrapper, test_data: tf.data.Dataset, dataloader: BaseDataloader) -> dict:
+    def evaluate(self, wrapper: BERT4RecModelWrapper, test_data: tf.data.Dataset, dataloader: BaseDataloader) \
+            -> list[EvaluationMetric]:
         """
         Evaluates a given model on the given test_data. The dataloader provides the method
         `create_popular_item_ranking()` on which the negative sampling is based on.
@@ -30,10 +32,10 @@ class BaseEvaluator(abc.ABC):
         """
         pass
 
-    def get_metrics(self):
+    def get_metrics(self) -> list[EvaluationMetric]:
         return self._metrics
 
-    def save_results(self, save_path: pathlib.Path):
+    def save_results(self, save_path: pathlib.Path) -> pathlib.Path:
         """
         Save the results (or the current status of the metrics) to the given save_path
 
@@ -43,7 +45,12 @@ class BaseEvaluator(abc.ABC):
         if save_path.is_dir():
             save_path = save_path.joinpath("eval_results.json")
 
+        metrics_dict = dict()
+
+        for metric in self._metrics:
+            metrics_dict[metric.name] = metric.result()
+
         with open(save_path, "w") as f:
-            json.dump(self._metrics, f, indent=4)
+            json.dump(metrics_dict, f, indent=4)
 
         return save_path

@@ -14,9 +14,6 @@ class BaseEvaluatorTest(tf.test.TestCase):
         # Testing base evaluator features with a concrete tokenizer implementation (as abstract classes
         # can't be instantiated)
         self.evaluator = evaluation.get()
-        self.evaluator._metrics.update({
-            "metric": "test"
-        })
 
     def tearDown(self):
         pass
@@ -49,15 +46,13 @@ class BaseEvaluatorTest(tf.test.TestCase):
                         f"{save_path_2} does not exist.")
         with open(save_path_1, "r") as f:
             metrics = json.load(f)
-            self.assertEqual(self.evaluator.get_metrics(), metrics,
-                             f"The saved metrics should be equal to the current status of the metrics of the "
-                             f"evaluator object ({self.evaluator.get_metrics()}), but actually are: {metrics}.")
+            for metric in self.evaluator.get_metrics():
+                self.assertEqual(metrics[metric.name], metric.result())
 
         with open(save_path_2, "r") as f:
             metrics = json.load(f)
-            self.assertEqual(self.evaluator.get_metrics(), metrics,
-                             f"The saved metrics should be equal to the current status of the metrics of the "
-                             f"evaluator object ({self.evaluator.get_metrics()}), but actually are: {metrics}.")
+            for metric in self.evaluator.get_metrics():
+                self.assertEqual(metrics[metric.name], metric.result())
 
 
 if __name__ == '__main__':
