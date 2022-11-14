@@ -21,3 +21,6 @@ keras = "==2.10.0"
 
 [requires]
 python_version = "3.10"
+
+[scripts]
+tests = "python -m unittest discover -v -s tests"
