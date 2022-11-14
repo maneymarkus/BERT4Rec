@@ -88,6 +88,20 @@ class EvaluationMetricsTests(tf.test.TestCase):
         self.assertEqual(round(map.result(), 2), 0.23)
         map.reset()
 
+    def test_counter(self):
+        counter = Counter()
+
+        self._update_metrics([counter], self.ranks_1)
+        self.assertEqual(round(counter.result(), 2), 5)
+        counter.reset()
+
+        self._update_metrics([counter], self.ranks_2)
+        self.assertEqual(round(counter.result(), 2), 5)
+        counter.reset()
+
+        self._update_metrics([counter], self.ranks_3)
+        self.assertEqual(round(counter.result(), 2), 10)
+        counter.reset()
 
 if __name__ == '__main__':
     tf.test.main()
