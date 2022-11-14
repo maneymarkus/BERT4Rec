@@ -5,7 +5,7 @@ from bert4rec import dataloaders
 
 class Recommender(tf.Module):
     def __init__(self, recommender_model: tf.keras.Model, dataloader: dataloaders.BaseDataloader = None):
-        super(Recommender, self).__init__()
+        super().__init__()
         self.recommender_model = recommender_model
         if dataloader is None:
             dataloader = dataloaders.BERT4RecDataloader(max_seq_len=512, max_predictions_per_seq=0)
