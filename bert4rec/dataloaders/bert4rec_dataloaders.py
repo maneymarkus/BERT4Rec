@@ -6,7 +6,7 @@ import random
 import string
 import tensorflow as tf
 
-from bert4rec.dataloaders.base_dataloader import BaseDataloader
+from bert4rec.dataloaders import BaseDataloader
 from bert4rec.tokenizers import BaseTokenizer
 import bert4rec.dataloaders.dataloader_utils as utils
 import bert4rec.tokenizers as tokenizers
@@ -21,7 +21,6 @@ class BERT4RecDataloader(BaseDataloader):
     This class is not abstract as it may be instantiated for e.g. feature preprocessing without a specific
     dataset
     """
-
     def __init__(self,
                  max_seq_len: int,
                  max_predictions_per_seq: int,
@@ -33,7 +32,7 @@ class BERT4RecDataloader(BaseDataloader):
         # BERT4Rec works with simple tokenizer
         if tokenizer is None:
             tokenizer = tokenizers.get("simple")
-        self.tokenizer = tokenizer
+        super().__init__(tokenizer)
 
         self._PAD_TOKEN = "[PAD]"
         self._MASK_TOKEN = "[MASK]"
@@ -152,7 +151,7 @@ class BERT4RecDataloader(BaseDataloader):
 
         labels = copy.copy(input_word_ids)
 
-        # pad combined segment inputs
+        # pad inputs
         if self._MAX_SEQ_LENGTH - input_word_ids.shape[0] > 0:
             paddings = tf.constant([[self._MAX_SEQ_LENGTH - input_word_ids.shape[0], 0]])
             input_word_ids = tf.pad(input_word_ids, paddings)
@@ -305,7 +304,7 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
                  input_duplication_factor: int = 1,
                  tokenizer: BaseTokenizer = None):
 
-        super(BERT4RecML1MDataloader, self).__init__(
+        super().__init__(
             max_seq_len,
             max_predictions_per_seq,
             masked_lm_prob,
@@ -365,8 +364,7 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
         df = ml_1m.load_ml_1m()
         item_list = df["movie_name"].to_list()
         sorted_item_list = utils.rank_items_by_popularity(item_list)
-        tokenized_sorted_item_list = self.tokenizer.tokenize(sorted_item_list)
-        return tokenized_sorted_item_list
+        return sorted_item_list
 
 
 class BERT4RecML20MDataloader(BERT4RecDataloader):
@@ -379,7 +377,7 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
                  input_duplication_factor: int = 1,
                  tokenizer: BaseTokenizer = None):
 
-        super(BERT4RecML20MDataloader, self).__init__(
+        super().__init__(
             max_seq_len,
             max_predictions_per_seq,
             masked_lm_prob,
@@ -439,8 +437,7 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
         df = ml_20m.load_ml_20m()
         item_list = df["movie_name"].to_list()
         sorted_item_list = utils.rank_items_by_popularity(item_list)
-        tokenized_sorted_item_list = self.tokenizer.tokenize(sorted_item_list)
-        return tokenized_sorted_item_list
+        return sorted_item_list
 
 
 class BERT4RecIMDBDataloader(BERT4RecDataloader):
@@ -452,7 +449,7 @@ class BERT4RecIMDBDataloader(BERT4RecDataloader):
                  random_token_rate: float = 0.0,
                  input_duplication_factor: int = 1,
                  tokenizer: BaseTokenizer = None):
-        super(BERT4RecIMDBDataloader, self).__init__(
+        super().__init__(
             max_seq_len,
             max_predictions_per_seq,
             masked_lm_prob,
@@ -491,7 +488,7 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
                  random_token_rate: float = 0.0,
                  input_duplication_factor: int = 1,
                  tokenizer: BaseTokenizer = None):
-        super(BERT4RecRedditDataloader, self).__init__(
+        super().__init__(
             max_seq_len,
             max_predictions_per_seq,
             masked_lm_prob,
@@ -525,18 +522,6 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
 if __name__ == "__main__":
     logging.set_verbosity(logging.DEBUG)
     dataloader = BERT4RecML1MDataloader()
-
-    train_ds, val_ds, test_ds = dataloader.prepare_training()
-    print(tf.data.experimental.cardinality(train_ds))
-    print(tf.data.experimental.cardinality(val_ds))
-    print(tf.data.experimental.cardinality(test_ds))
-
-    train_batches = utils.make_batches(train_ds, buffer_size=tf.data.experimental.cardinality(train_ds))
-    # train_ds.save("saved_data/dataset")
-    for t in train_batches.take(2):
-        print(t)
-
-    exit()
     dataloader.generate_vocab()
     tokenizer = dataloader.get_tokenizer()
     ds = dataloader.load_data_into_ds()
