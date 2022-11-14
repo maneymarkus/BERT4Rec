@@ -9,6 +9,7 @@ from bert4rec.model import BERT4RecModelWrapper
 
 
 bert4rec_evaluation_metrics = [
+    Counter(name="Valid Ranks"),
     NDCG(1),
     NDCG(5),
     NDCG(10),

@@ -44,6 +44,18 @@ class RatioEvaluationMetric(EvaluationMetric):
         self._denominator = 0.0
 
 
+class Counter(EvaluationMetric):
+    """
+    Simple counter metric that counts the amount of times the update method is called.
+    May e.g. be used to keep track of the amount of evaluation steps
+    """
+    def __init__(self, name: str = "Counter", initial_value: int = 0):
+        super().__init__(name, initial_value)
+
+    def update(self, rank: int):
+        self._value += 1
+
+
 class HitRatio(RatioEvaluationMetric):
     def __init__(self, k: int, name: str = "HitRatio", initial_value: int = 0):
         name = name + "@" + str(k)
