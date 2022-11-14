@@ -339,7 +339,7 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
         to generate more samples
         :return:
         """
-        super(BERT4RecML1MDataloader, self).load_data_into_split_ds(duplication_factor)
+        super().load_data_into_split_ds(duplication_factor)
 
         df = ml_1m.load_ml_1m()
         df = df.sort_values(by="timestamp")
@@ -412,7 +412,7 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
         to generate more samples
         :return:
         """
-        super(BERT4RecML20MDataloader, self).load_data_into_split_ds(duplication_factor)
+        super().load_data_into_split_ds(duplication_factor)
 
         df = ml_1m.load_ml_1m()
         df = df.sort_values(by="timestamp")
