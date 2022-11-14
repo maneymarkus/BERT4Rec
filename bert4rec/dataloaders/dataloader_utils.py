@@ -133,31 +133,6 @@ def split_sequence_df(df: pd.DataFrame, group_by_column: str, sequence_column: s
     return train_df, val_df, test_df
 
 
-def trim_content(max_seq_length: int,
-                 content: list,
-                 trimmer=None) \
-        -> tuple[tf_text.RoundRobinTrimmer, list]:
-    """
-    Cut off `content` at given `max_seq_length` according to used `trimmer`. Unfortunately, the base trimmer
-    class is not referable and can't therefore be used to typehint the trimmer.
-
-    :param trimmer: A trimmer from tensorflow_text inheriting from tensorflow_text.Trimmer
-    :param max_seq_length:
-    :param content:
-    :return: trimmer, trimmed content
-    """
-    if trimmer is not None:
-        if not hasattr(trimmer, "trim") or not callable(getattr(trimmer, "trim")):
-            raise ValueError("The given trimmer might not be of type tensorflow_text.trimmer, "
-                             "as it does not have the required method (trim()).")
-
-    if trimmer is None:
-        trimmer = tf_text.RoundRobinTrimmer(max_seq_length=max_seq_length)
-
-    trimmed_segments = trimmer.trim(content)
-    return trimmer, trimmed_segments
-
-
 def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
                                max_selections_per_seq: int,
                                mask_token_id: int,
