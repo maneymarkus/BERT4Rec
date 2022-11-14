@@ -4,27 +4,27 @@ import random
 
 from bert4rec.apps import Recommender
 from bert4rec import dataloaders
-from bert4rec.model import BERTModel, model_utils
-from bert4rec.model.components import networks
-import bert4rec.utils as utils
+from bert4rec.model import BERT4RecModelWrapper, model_utils
 
 
 def main():
     logging.set_verbosity(logging.INFO)
 
+    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m_with_adamw"))
+
+    loaded_assets = BERT4RecModelWrapper.load(save_path)
+    loaded_wrapper = loaded_assets["model_wrapper"]
+    model = loaded_wrapper.bert_model
+    dataloader_config = {}
+    if "tokenizer" in loaded_assets:
+        tokenizer = loaded_assets["tokenizer"]
+        dataloader_config["tokenizer"] = tokenizer
+
     dataloader_factory = dataloaders.get_dataloader_factory()
-    dataloader = dataloader_factory.create_ml_1m_dataloader()
+    dataloader = dataloader_factory.create_ml_1m_dataloader(**dataloader_config)
     dataloader.generate_vocab()
     vocab_size = dataloader.tokenizer.get_vocab_size()
     special_tokens_length = len(dataloader._SPECIAL_TOKENS)
-
-    config_path = pathlib.Path("../config/bert_train_configs/ml-1m_128.json")
-    config = utils.load_json_config(config_path)
-
-    encoder = networks.BertEncoder(vocab_size, **config)
-    model = BERTModel(encoder)
-    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m_with_adamw/checkpoints"))
-    model.load_weights(save_path)
 
     recommender_app = Recommender(model, dataloader)
 
