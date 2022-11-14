@@ -34,57 +34,6 @@ def load_ml_20m() -> pd.DataFrame:
     return df
 
 
-def preprocess_ml_20m(dataframe: pd.DataFrame, min_rating: int = 0, min_uc: int = 5, min_sc: int = 0) \
-        -> (pd.DataFrame, dict, dict):
-    """
-    Args:
-        dataframe: The generated dataframe based on the ml_1m dataset
-        min_rating: Determines the lowest rating that should be included in the dataset (rating from 1 to 5)
-        min_uc: Determines how many ratings a user should have submitted in order to be included
-        in the final dataset (users with less ratings than min_uc will be filtered out)
-        min_sc: Determines how many ratings an item (motive) should have in order to be included
-        in the final dataset (items with less ratings than min_sc will be filtered out)
-    """
-    logging.debug("Make implicit:\n%s\n", dataframe)
-    df = make_implicit(dataframe, min_rating)
-    logging.debug("Filter Users and Items:\n%s\n", df)
-    df = filter_users_and_items(df, min_uc, min_sc)
-    # Sort dataset by user and timestamp
-    df = df.sort_values(["uid", "timestamp"])
-    return df
-
-
-def make_implicit(df: pd.DataFrame, min_rating: int = 0) -> pd.DataFrame:
-    """
-    This function only keeps rows in the dataframe with a rating higher than or equal to self.min_rating
-    """
-    logging.info('Turning into implicit ratings')
-    df["rating"] = df["rating"].astype('int32')
-    df = df[df['rating'] >= min_rating]
-    return df
-
-
-def filter_users_and_items(df: pd.DataFrame, min_uc: int = 5, min_sc: int = 0) \
-        -> pd.DataFrame:
-    """
-    This function filters users and items.
-    It groups users and items by id and removes users and items that appear less than
-    self.min_sc for items and self.min_uc for users respectively.
-    In other words: users that only rated less than self.min_uc items will be filtered out
-    """
-    logging.info('Filtering users and items')
-    if min_uc > 0:
-        user_sizes = df.groupby('uid').size()
-        good_users = user_sizes.index[user_sizes >= min_uc]
-        df = df[df['uid'].isin(good_users)]
-
-    if min_sc > 0:
-        item_sizes = df.groupby('sid').size()
-        good_items = item_sizes.index[item_sizes >= min_sc]
-        df = df[df['sid'].isin(good_items)]
-    return df
-
-
 if __name__ == "__main__":
     logging.set_verbosity(logging.DEBUG)
     data = load_ml_20m()
