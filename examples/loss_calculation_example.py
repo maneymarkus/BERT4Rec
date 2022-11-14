@@ -61,6 +61,8 @@ def main():
     ####################################
     # with using masked lm layer       #
     ####################################
+    logging.info("y_true")
+    logging.info(y_true)
     y_pred_mlm = predictions["mlm_logits"]
     logging.info("y_pred_mlm:")
     logging.info(y_pred_mlm)
