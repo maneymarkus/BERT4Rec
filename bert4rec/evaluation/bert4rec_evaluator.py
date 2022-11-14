@@ -35,7 +35,7 @@ class BERT4RecEvaluator(BaseEvaluator):
                              f"has to be given.")
 
         if popular_items_ranking is None:
-            popular_items_ranking = dataloader.create_popular_item_ranking()
+            popular_items_ranking = dataloader.create_popular_item_ranking_tokenized()
 
         # iterate over the available batches
         for batch in tqdm.tqdm(test_data):

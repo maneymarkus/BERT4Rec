@@ -5,7 +5,7 @@ from bert4rec.tokenizers.base_tokenizer import BaseTokenizer
 
 
 class BaseDataloader(abc.ABC):
-    def __int__(self, tokenizer: BaseTokenizer = None):
+    def __init__(self, tokenizer: BaseTokenizer = None):
         self.tokenizer = tokenizer
 
     def get_tokenizer(self):
@@ -72,3 +72,7 @@ class BaseDataloader(abc.ABC):
     @abc.abstractmethod
     def create_popular_item_ranking(self) -> list:
         pass
+
+    def create_popular_item_ranking_tokenized(self) -> list:
+        sorted_item_list = self.create_popular_item_ranking()
+        return self.tokenizer.tokenize(sorted_item_list)
