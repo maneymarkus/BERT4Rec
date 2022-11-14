@@ -35,6 +35,14 @@ class BaseEvaluator(abc.ABC):
     def get_metrics(self) -> list[EvaluationMetric]:
         return self._metrics
 
+    def get_metrics_results(self) -> dict:
+        metrics_dict = dict()
+
+        for metric in self._metrics:
+            metrics_dict[metric.name] = metric.result()
+
+        return metrics_dict
+
     def save_results(self, save_path: pathlib.Path) -> pathlib.Path:
         """
         Save the results (or the current status of the metrics) to the given save_path
@@ -45,10 +53,7 @@ class BaseEvaluator(abc.ABC):
         if save_path.is_dir():
             save_path = save_path.joinpath("eval_results.json")
 
-        metrics_dict = dict()
-
-        for metric in self._metrics:
-            metrics_dict[metric.name] = metric.result()
+        metrics_dict = self.get_metrics_results()
 
         with open(save_path, "w") as f:
             json.dump(metrics_dict, f, indent=4)
