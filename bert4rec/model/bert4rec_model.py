@@ -11,7 +11,7 @@ import bert4rec.dataloaders.dataloader_utils as dataloader_utils
 from bert4rec.model.components import layers, networks
 import bert4rec.model.model_utils as utils
 import bert4rec.tokenizers as tokenizers
-from bert4rec.trainers import optimizers
+from bert4rec.trainers import optimizers, trainer_utils
 
 _ENCODER_CONFIG_FILE_NAME = "encoder_config.json"
 _META_CONFIG_FILE_NAME = "meta_config.json"
@@ -241,6 +241,10 @@ class BERT4RecModelWrapper:
         :return: Dict with all loaded assets
         """
         save_path = utils.determine_model_path(save_path, mode)
+
+        if not save_path.exists():
+            raise ValueError(f"The given path {save_path} does not exist.")
+
         loaded_assets = dict()
         loaded_bert = tf.keras.models.load_model(save_path, custom_objects={
             "BERTModel": BERTModel,
@@ -252,6 +256,8 @@ class BERT4RecModelWrapper:
             "TransformerEncoderBlock": layers.TransformerEncoderBlock,
             "RelativePositionEmbedding": layers.RelativePositionEmbedding,
             "RelativePositionBias": layers.RelativePositionBias,
+            "masked_accuracy": trainer_utils.masked_accuracy,
+            "MaskedSparseCategoricalCrossentropy": trainer_utils.MaskedSparseCategoricalCrossentropy,
         })
         wrapper = cls(loaded_bert)
         loaded_assets["model_wrapper"] = wrapper
