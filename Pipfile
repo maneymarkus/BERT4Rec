@@ -18,9 +18,14 @@ tensorflow-estimator = "==2.10.0"
 keras = "==2.10.0"
 
 [dev-packages]
+coverage = "*"
+pylint = "*"
 
 [requires]
 python_version = "3.10"
 
 [scripts]
-tests = "python -m unittest discover -v -s tests"
+tests = "coverage run -m unittest discover -v -s tests"
+coverage = "coverage report -m"
+lint = "pylint --recursive=y ."
+lint-errors-only = "pylint -E --recursive=y ."
