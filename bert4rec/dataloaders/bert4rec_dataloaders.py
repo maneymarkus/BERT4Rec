@@ -184,7 +184,7 @@ class BERT4RecDataloader(BaseDataloader):
 
             # pad masked_lm inputs
             if masked_lm_ids.shape[0] < self._MAX_PREDICTIONS_PER_SEQ:
-                paddings = tf.constant([[0, self._MAX_PREDICTIONS_PER_SEQ - masked_lm_ids.shape[0]]])
+                paddings = tf.constant([[self._MAX_PREDICTIONS_PER_SEQ - masked_lm_ids.shape[0], 0]])
                 masked_lm_ids = tf.pad(masked_lm_ids, paddings)
                 masked_lm_positions = tf.pad(masked_lm_positions, paddings)
                 masked_lm_weights = tf.pad(masked_lm_weights, paddings)
