@@ -13,7 +13,7 @@ import bert4rec.tokenizers.tokenizer_utils as utils
 class SimpleTokenizer(base_tokenizer.BaseTokenizer):
     """
     Converts a string to a unique (numerical) id
-    E.g. a given string containing any potential delimiting/splitting symbols (like "," or " " or "|" is converted
+    E.g. a given string containing any potential delimiting/splitting symbols (like "," or " " or "|") is converted
     to a list of ONE id.
     Even more concrete example: "Action|Drama|Children" => [2]
     See: MultiHotContentTokenizer for comparison
