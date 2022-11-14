@@ -2,8 +2,11 @@ import tensorflow as tf
 
 
 class MaskedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
-    def __init__(self, mask_token: int = 0):
-        super(MaskedSparseCategoricalCrossentropy, self).__init__()
+    def __init__(self,
+                 mask_token: int = 0,
+                 reduction: tf.keras.losses.Reduction = tf.keras.losses.Reduction.AUTO,
+                 name: str = None):
+        super().__init__(reduction, name)
         self.mask_token = mask_token
         
     def call(self, y_true, y_pred):
@@ -22,7 +25,7 @@ class MaskedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
 
 class MaskedAccuracyMetric(tf.keras.metrics.Metric):
     def __init__(self, mask_token: int = 0):
-        super(MaskedAccuracyMetric, self).__init__()
+        super().__init__()
         self.mask_token = mask_token
         self.total = None
 
