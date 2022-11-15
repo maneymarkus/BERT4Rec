@@ -2,8 +2,7 @@ import abc
 
 from .dataloader_utils import *
 from .base_dataloader import BaseDataloader
-from .bert4rec_dataloaders import BERT4RecDataloader, BERT4RecML1MDataloader, BERT4RecML20MDataloader, \
-    BERT4RecIMDBDataloader, BERT4RecRedditDataloader
+from .bert4rec_dataloaders import *
 
 
 class BaseDataloaderFactory(abc.ABC):

@@ -10,7 +10,6 @@ from bert4rec.dataloaders import BaseDataloader
 from bert4rec.tokenizers import BaseTokenizer
 import bert4rec.dataloaders.dataloader_utils as utils
 import bert4rec.tokenizers as tokenizers
-import datasets.imdb as imdb
 import datasets.ml_1m as ml_1m
 import datasets.ml_20m as ml_20m
 import datasets.reddit as reddit
@@ -438,45 +437,6 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
         item_list = df["movie_name"].to_list()
         sorted_item_list = utils.rank_items_by_popularity(item_list)
         return sorted_item_list
-
-
-class BERT4RecIMDBDataloader(BERT4RecDataloader):
-    def __init__(self,
-                 max_seq_len: int = 200,
-                 max_predictions_per_seq: int = 40,
-                 masked_lm_prob: float = 0.2,
-                 mask_token_rate: float = 1.0,
-                 random_token_rate: float = 0.0,
-                 input_duplication_factor: int = 1,
-                 tokenizer: BaseTokenizer = None):
-        super().__init__(
-            max_seq_len,
-            max_predictions_per_seq,
-            masked_lm_prob,
-            mask_token_rate,
-            random_token_rate,
-            input_duplication_factor,
-            tokenizer)
-
-    @property
-    def dataset_identifier(self):
-        return "imdb"
-
-    def load_data_into_ds(self) -> tf.data.Dataset:
-        raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
-                                  "with the BERT4Rec model.")
-
-    def load_data_into_split_ds(self, duplication_factor: int = None) \
-            -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
-        raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
-                                  "with the BERT4Rec model.")
-
-    def generate_vocab(self, source=None) -> True:
-        raise NotImplementedError("The IMDB dataset is not (yet) implemented to be utilised in conjunction "
-                                  "with the BERT4Rec model.")
-
-    def create_popular_item_ranking(self) -> list:
-        pass
 
 
 class BERT4RecRedditDataloader(BERT4RecDataloader):
