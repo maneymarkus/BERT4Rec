@@ -1,14 +1,13 @@
 from absl import logging
 import pathlib
 import random
-import string
 import tempfile
 import tensorflow as tf
 
 from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils
-from bert4rec.model.bert4rec_model import BERTModel, BERT4RecModelWrapper, \
+from bert4rec.models.bert4rec_model import BERTModel, BERT4RecModelWrapper, \
     _META_CONFIG_FILE_NAME, _TOKENIZER_VOCAB_FILE_NAME
-from bert4rec.model.components import networks
+from bert4rec.models.components import networks
 from bert4rec import tokenizers
 from bert4rec.trainers import optimizers
 import tests.test_utils as test_utils
@@ -73,7 +72,7 @@ class BERT4RecModelTests(tf.test.TestCase):
         self.assertIsInstance(reloaded_wrapper, BERT4RecModelWrapper,
                               f"The loaded model wrapper should be an instance of {BERT4RecModelWrapper}, "
                               f"but is an instance of: {type(reloaded_wrapper)}")
-        # assertions fail because (re)loading a saved model does not instantiate the original class yet
+        # assertions fail because (re)loading a saved models does not instantiate the original class yet
         self.assertIsInstance(reloaded_bert_model, BERTModel,
                               f"The loaded (in the model wrapper contained) model should be an instance of "
                               f"{BERTModel} but is actually an instance of: {type(reloaded_bert_model)}")
@@ -102,8 +101,8 @@ class BERT4RecModelTests(tf.test.TestCase):
         # makes sure the weights are built
         _ = bert_model(bert_model.inputs)
 
-        # should throw an error when trying to save a not fully initialized model
-        # i.e. model can't be saved without at least one training step as this builds the loss and metrics
+        # should throw an error when trying to save a not fully initialized models
+        # i.e. models can't be saved without at least one training step as this builds the loss and metrics
         with self.assertRaises(RuntimeError):
             wrapper.save(save_path)
 
@@ -116,7 +115,7 @@ class BERT4RecModelTests(tf.test.TestCase):
         # the one train step to build the compiled metrics and loss
         bert_model.train_step(random_input)
 
-        # save only model and meta config
+        # save only models and meta config
         wrapper.save(save_path)
         assets_path = save_path.joinpath("assets")
         keras_metadata_path = save_path.joinpath("keras_metadata.pb")
@@ -138,7 +137,7 @@ class BERT4RecModelTests(tf.test.TestCase):
         # makes sure, vocab has at least one entry
         tokenizer.tokenize("test")
 
-        # save model and tokenizer vocab and meta config
+        # save models and tokenizer vocab and meta config
         wrapper.save(save_path, tokenizer)
         vocab_path = save_path.joinpath(_TOKENIZER_VOCAB_FILE_NAME)
 
@@ -213,18 +212,24 @@ class BERT4RecModelTests(tf.test.TestCase):
                                  f"{len(rank_items_2[b][i])})")
 
     def test_update_meta(self):
+        vocab_size = 200
+
         new_entries = {
             "new_entry": "test",
             "some": "info",
         }
-        self.bert4rec_wrapper.update_meta(new_entries)
-        meta_config = self.bert4rec_wrapper.get_meta()
+
+        bert_model = self._build_model(vocab_size)
+        wrapper = BERT4RecModelWrapper(bert_model)
+
+        wrapper.update_meta(new_entries)
+        meta_config = wrapper.get_meta()
         self.assertIn("new_entry", meta_config,
                       f"'new_entry' should be a key present in the meta config of the wrapper class "
-                      f"but it has only these keys: {self.bert4rec_wrapper.get_meta().keys()}.")
+                      f"but it has only these keys: {wrapper.get_meta().keys()}.")
         self.assertIn("some", meta_config,
                       f"'some' should be a key present in the meta config of the wrapper class "
-                      f"but it has only these keys: {self.bert4rec_wrapper.get_meta().keys()}.")
+                      f"but it has only these keys: {wrapper.get_meta().keys()}.")
         self.assertEqual(new_entries["new_entry"], meta_config["new_entry"],
                          f"The values for the 'new_entry' key should be equal in the new_entries dict and "
                          f"the meta_config dict."
@@ -237,27 +242,32 @@ class BERT4RecModelTests(tf.test.TestCase):
                          f"meta_config value: {meta_config['some']}")
 
     def test_delete_key_from_meta(self):
-        meta_config = self.bert4rec_wrapper.get_meta()
+        vocab_size = 200
+
+        bert_model = self._build_model(vocab_size)
+        wrapper = BERT4RecModelWrapper(bert_model)
+
+        meta_config = wrapper.get_meta()
         meta_keys = list(meta_config.keys())
         random_meta_key = random.choice(meta_keys)
-        print(random_meta_key)
-        self.bert4rec_wrapper.delete_keys_from_meta(random_meta_key)
-        self.assertNotIn(random_meta_key, self.bert4rec_wrapper.get_meta(),
+        logging.debug(random_meta_key)
+        wrapper.delete_keys_from_meta(random_meta_key)
+        self.assertNotIn(random_meta_key, wrapper.get_meta(),
                          f"Deleting a key ({random_meta_key}) from the meta config "
                          f"should remove it from the meta config dict, but it is still available in: "
-                         f"{self.bert4rec_wrapper.get_meta()}")
+                         f"{wrapper.get_meta()}")
 
         if len(meta_config) < 3:
-            self.bert4rec_wrapper.update_meta({"key1": "value1", "key2": "value2", "key3": "value3"})
+            wrapper.update_meta({"key1": "value1", "key2": "value2", "key3": "value3"})
 
         meta_keys = list(meta_config.keys())
         random_meta_keys = [random.choice(meta_keys) for _ in range(2)]
-        self.bert4rec_wrapper.delete_keys_from_meta(random_meta_keys)
+        wrapper.delete_keys_from_meta(random_meta_keys)
         for rmk in random_meta_keys:
-            self.assertNotIn(rmk, self.bert4rec_wrapper.get_meta(),
+            self.assertNotIn(rmk, wrapper.get_meta(),
                              f"Deleting a list of keys ({random_meta_keys}) should remove both keys from "
                              f"the meta config dict, but the key '{rmk}' is still available in: "
-                             f"{self.bert4rec_wrapper.get_meta()}")
+                             f"{wrapper.get_meta()}")
 
 
 if __name__ == "__main__":

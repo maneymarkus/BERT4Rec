@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.python.keras import keras_parameterized
 # pylint: disable=g-direct-tensorflow-import
 
-from bert4rec.model.components.layers import TransformerEncoderBlock
+from bert4rec.models.components.layers import TransformerEncoderBlock
 
 
 @keras_parameterized.run_all_keras_modes
@@ -51,10 +51,10 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
         data_tensor = tf.keras.Input(shape=(sequence_length, width))
         output_tensor = test_layer(data_tensor)
 
-        # Create a model from the test layer.
+        # Create a models from the test layer.
         model = tf.keras.Model(data_tensor, output_tensor)
 
-        # Invoke the model on test data. We can't validate the output data itself
+        # Invoke the models on test data. We can't validate the output data itself
         # (the NN is too complex) but this will rule out structural runtime errors.
         batch_size = 6
         input_data = 10 * np.random.random_sample(
@@ -72,10 +72,10 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
         mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
         output_tensor = test_layer([data_tensor, mask_tensor])
 
-        # Create a model from the test layer.
+        # Create a models from the test layer.
         model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
 
-        # Invoke the model on test data. We can't validate the output data itself
+        # Invoke the models on test data. We can't validate the output data itself
         # (the NN is too complex) but this will rule out structural runtime errors.
         batch_size = 6
         input_data = 10 * np.random.random_sample(
@@ -178,10 +178,10 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
         mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
         output_tensor = test_layer([data_tensor, mask_tensor])
 
-        # Create a model from the test layer.
+        # Create a models from the test layer.
         model = tf.keras.Model([data_tensor, mask_tensor], output_tensor)
 
-        # Invoke the model on test data. We can't validate the output data itself
+        # Invoke the models on test data. We can't validate the output data itself
         # (the NN is too complex) but this will rule out structural runtime errors.
         batch_size = 6
         input_data = (10 * np.random.random_sample(

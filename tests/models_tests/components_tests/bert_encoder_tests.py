@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-from bert4rec.model.components.networks import bert_encoder
+from bert4rec.models.components.networks import bert_encoder
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
@@ -170,10 +170,10 @@ class BertEncoderTest(keras_parameterized.TestCase):
         data = dict_outputs["sequence_output"]
         pooled = dict_outputs["pooled_output"]
 
-        # Create a model based off of this network:
+        # Create a models based off of this network:
         model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
 
-        # Invoke the model. We can't validate the output data here (the model is too
+        # Invoke the models. We can't validate the output data here (the models is too
         # complex) but this will catch structural runtime errors.
         batch_size = 3
         word_id_data = np.random.randint(
@@ -280,8 +280,8 @@ class BertEncoderTest(keras_parameterized.TestCase):
         # Validate that the config can be forced to JSON.
         _ = network.to_json()
 
-        # Tests model saving/loading.
-        model_path = self.get_temp_dir() + "/model"
+        # Tests models saving/loading.
+        model_path = self.get_temp_dir() + "/models"
         network.save(model_path)
         _ = tf.keras.models.load_model(model_path)
 
@@ -418,10 +418,10 @@ class BertEncoderTest(keras_parameterized.TestCase):
         type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
         data, pooled = test_network([word_ids, mask, type_ids])
 
-        # Create a model based off of this network:
+        # Create a models based off of this network:
         model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
 
-        # Invoke the model. We can't validate the output data here (the model is too
+        # Invoke the models. We can't validate the output data here (the models is too
         # complex) but this will catch structural runtime errors.
         batch_size = 3
         word_id_data = np.random.randint(
@@ -564,7 +564,7 @@ class BertEncoderV2CompatibilityTest(tf.test.TestCase):
         new_ckpt = tf.train.Checkpoint(net=new_net)
         status = new_ckpt.restore(path)
         status.assert_existing_objects_matched()
-        # assert_consumed will fail because the old model has redundant nodes.
+        # assert_consumed will fail because the old models has redundant nodes.
         new_net_outputs = new_net(data)
 
         self.assertAllEqual(old_net_outputs.keys(), new_net_outputs.keys())

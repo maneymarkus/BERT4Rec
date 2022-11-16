@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized
 # pylint: disable=g-direct-tensorflow-import
-from bert4rec.model.components import activations
+from bert4rec.models.components import activations
 
 
 @keras_parameterized.run_all_keras_modes

@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.python.keras import keras_parameterized
 # pylint: disable=g-direct-tensorflow-import
 
-from bert4rec.model.components.layers import on_device_embedding
+from bert4rec.models.components.layers import on_device_embedding
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
@@ -56,10 +56,10 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
         input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
         output_tensor = test_layer(input_tensor)
 
-        # Create a model from the test layer.
+        # Create a models from the test layer.
         model = tf.keras.Model(input_tensor, output_tensor)
 
-        # Invoke the model on test data. We can't validate the output data itself
+        # Invoke the models on test data. We can't validate the output data itself
         # (the NN is too complex) but this will rule out structural runtime errors.
         batch_size = 3
         input_data = np.random.randint(
@@ -78,10 +78,10 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
         input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
         output_tensor = test_layer(input_tensor)
 
-        # Create a model from the test layer.
+        # Create a models from the test layer.
         model = tf.keras.Model(input_tensor, output_tensor)
 
-        # Invoke the model on test data. We can't validate the output data itself
+        # Invoke the models on test data. We can't validate the output data itself
         # (the NN is too complex) but this will rule out structural runtime errors.
         batch_size = 3
         input_data = np.random.randint(
@@ -138,10 +138,10 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
         input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
         output_tensor = test_layer(input_tensor)
 
-        # Create a model from the test layer.
+        # Create a models from the test layer.
         model = tf.keras.Model(input_tensor, output_tensor)
 
-        # Invoke the model on test data. We can't validate the output data itself
+        # Invoke the models on test data. We can't validate the output data itself
         # (the NN is too complex) but this will rule out structural runtime errors.
         batch_size = 3
         input_data = np.random.randint(
@@ -162,10 +162,10 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
         input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
         output_tensor = test_layer(input_tensor)
 
-        # Create a model from the test layer.
+        # Create a models from the test layer.
         model = tf.keras.Model(input_tensor, output_tensor)
 
-        # Invoke the model on test data. We can't validate the output data itself
+        # Invoke the models on test data. We can't validate the output data itself
         # (the NN is too complex) but this will rule out structural runtime errors.
         batch_size = 3
         input_data = np.random.randint(
@@ -184,10 +184,10 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
         input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
         output_tensor = test_layer(input_tensor)
 
-        # Create a model from the test layer.
+        # Create a models from the test layer.
         model = tf.keras.Model(input_tensor, output_tensor)
 
-        # Invoke the model on test data. We can't validate the output data itself
+        # Invoke the models on test data. We can't validate the output data itself
         # (the NN is too complex) but this will rule out structural runtime errors.
         batch_size = 3
         input_data = np.random.randint(

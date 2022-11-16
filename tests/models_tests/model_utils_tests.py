@@ -4,9 +4,9 @@ import random
 import tensorflow as tf
 
 import bert4rec.dataloaders.dataloader_utils as dataloader_utils
-from bert4rec.model import BERTModel
-from bert4rec.model.components import networks
-import bert4rec.model.model_utils as utils
+from bert4rec.models import BERTModel
+from bert4rec.models.components import networks
+import bert4rec.models.model_utils as utils
 import tests.test_utils as test_utils
 
 

@@ -1,11 +1,11 @@
-"""Tests for masked language model network."""
+"""Tests for masked language models network."""
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 
-from bert4rec.model.components.layers import masked_lm
-from bert4rec.model.components.networks import bert_encoder
+from bert4rec.models.components.layers import masked_lm
+from bert4rec.models.components.networks import bert_encoder
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
@@ -71,7 +71,7 @@ class MaskedLMTest(keras_parameterized.TestCase):
             xformer_stack=xformer_stack,
             output='logits')
 
-        # Create a model from the masked LM layer.
+        # Create a models from the masked LM layer.
         lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
         masked_positions = tf.keras.Input(shape=(num_predictions,), dtype=tf.int32)
         output = test_layer(lm_input_tensor, masked_positions)
@@ -89,7 +89,7 @@ class MaskedLMTest(keras_parameterized.TestCase):
             (batch_size, sequence_length, hidden_size))
         masked_position_data = np.random.randint(
             sequence_length, size=(batch_size, num_predictions))
-        # ref_outputs = model.predict([lm_input_data, masked_position_data])
+        # ref_outputs = models.predict([lm_input_data, masked_position_data])
         # outputs = logits_model.predict([lm_input_data, masked_position_data])
         ref_outputs = model([lm_input_data, masked_position_data])
         outputs = logits_model([lm_input_data, masked_position_data])
@@ -108,7 +108,7 @@ class MaskedLMTest(keras_parameterized.TestCase):
         test_layer = self.create_layer(
             vocab_size=vocab_size, hidden_size=hidden_size)
 
-        # Create a model from the masked LM layer.
+        # Create a models from the masked LM layer.
         lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
         masked_positions = tf.keras.Input(shape=(num_predictions,), dtype=tf.int32)
         output = test_layer(lm_input_tensor, masked_positions)

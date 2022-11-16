@@ -1,13 +1,12 @@
 from absl import logging
 import copy
-import pathlib
 import random
 import tensorflow as tf
 
 from bert4rec.dataloaders import dataloader_utils
 import bert4rec.evaluation as evaluation
-from bert4rec.model import BERTModel, BERT4RecModelWrapper
-from bert4rec.model.components import networks
+from bert4rec.models import BERTModel, BERT4RecModelWrapper
+from bert4rec.models.components import networks
 import bert4rec.utils as utils
 import tests.test_utils as test_utils
 
@@ -23,7 +22,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
 
     def _create_model_wrapper(self, config_identifier: str = "ml-1m_128.json", vocab_size: int = 1000):
         # load a specific config
-        config_path = pathlib.Path(f"../../config/bert_train_configs/{config_identifier}")
+        config_path = utils.get_project_root().joinpath(f"config/bert_train_configs/{config_identifier}")
         config = utils.load_json_config(config_path)
 
         bert_encoder = networks.BertEncoder(vocab_size, **config)
@@ -49,16 +48,18 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         random_popular_items = list(set([random.randint(0, vocab_size)
                                          for _ in range(200)]))
 
-        metrics = self.evaluator.evaluate(
+        metric_objects = self.evaluator.evaluate(
             model_wrapper, prepared_batches, popular_items_ranking=random_popular_items
         )
 
-        self.assertEqual(metrics["valid_ranks"], ds_size,
+        metrics = self.evaluator.get_metrics_results()
+
+        self.assertEqual(metrics["Valid Ranks"], ds_size,
                          f"The metrics should have as many valid ranks (basically how many ranks have been "
                          f"successfully processed) as there are elements (or better sequences in this case) "
-                         f"in the dataset ({ds_size}), but there actually are: {metrics['valid_ranks']}")
+                         f"in the dataset ({ds_size}), but there actually are: {metrics['Valid Ranks']}")
 
-        del metrics["valid_ranks"]
+        del metrics["Valid Ranks"]
         for metric, value in metrics.items():
             self.assertBetween(value, 0, 1,
                                f"Each metric (except valid_ranks) should have a positive float value "

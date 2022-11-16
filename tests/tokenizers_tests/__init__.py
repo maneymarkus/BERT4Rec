@@ -1,2 +1,3 @@
+from .base_tokenizer_tests import BaseTokenizerTests
 from .simple_tokenizer_tests import SimpleTokenizersTest
 from .tokenizer_utils_tests import TokenizerUtilsTest

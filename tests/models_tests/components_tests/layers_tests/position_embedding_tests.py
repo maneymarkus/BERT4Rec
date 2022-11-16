@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.python.keras import keras_parameterized
 # pylint: disable=g-direct-tensorflow-import
 
-from bert4rec.model.components.layers import position_embedding
+from bert4rec.models.components.layers import position_embedding
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
@@ -109,7 +109,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
         # Note: This test explicitly uses a batch size of 1. This is to get around
         # Keras' restriction on Model invocations: inputs are expected to have the
         # same batch cardinality as outputs. In practice, this layer should be used
-        # inside a model, where it can be projected when added to another tensor.
+        # inside a models, where it can be projected when added to another tensor.
         input_data = np.ones((1, input_length, width))
         output_data = model.predict(input_data)
 

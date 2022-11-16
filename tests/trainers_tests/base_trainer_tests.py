@@ -1,8 +1,8 @@
 from absl import logging
 import tensorflow as tf
 
-from bert4rec.model.components import networks
-from bert4rec.model import BERTModel
+from bert4rec.models.components import networks
+from bert4rec.models import BERTModel
 from bert4rec import trainers
 
 
@@ -19,10 +19,10 @@ class BaseTrainerTests(tf.test.TestCase):
         pass
 
     def test_trainer_factory_method(self):
-        optimizer = trainers.get("bert4rec")
-        self.assertIsInstance(optimizer, trainers.BERT4RecTrainer)
-        optimizer2 = trainers.get()
-        self.assertIsInstance(optimizer2, trainers.BERT4RecTrainer)
+        trainer = trainers.get("bert4rec", **{"models": self.bert_model})
+        self.assertIsInstance(trainer, trainers.BERT4RecTrainer)
+        trainer2 = trainers.get(**{"models": self.bert_model})
+        self.assertIsInstance(trainer2, trainers.BERT4RecTrainer)
         with self.assertRaises(ValueError):
             trainers.get("alsdkjfhoiho")
 

@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
 
-from bert4rec.model.components import component_utils
+from bert4rec.models.components import component_utils
 
 
 def all_strategy_combinations():
