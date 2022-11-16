@@ -29,6 +29,9 @@ train_step_signature = [{
 }]
 
 
+SPECIAL_TOKEN_IDS = BERT4RecDataloader(0, 0)._SPECIAL_TOKEN_IDS
+
+
 class BERTModel(tf.keras.Model):
     """
     NOTE: The model can only be saved, when completely initialized (when using the saving api.
@@ -47,7 +50,19 @@ class BERTModel(tf.keras.Model):
                  mlm_activation=None,
                  mlm_initializer="glorot_uniform",
                  name: str = "bert",
+                 special_token_ids: list[int] = SPECIAL_TOKEN_IDS,
                  **kwargs):
+        """
+
+        :param encoder:
+        :param customized_masked_lm:
+        :param mlm_activation:
+        :param mlm_initializer:
+        :param name: Name of this keras model
+        :param special_token_ids: An optional list of special token ids that should be prevented from
+            being predicted
+        :param kwargs:
+        """
 
         super(BERTModel, self).__init__(name=name, **kwargs)
 
@@ -80,6 +95,18 @@ class BERTModel(tf.keras.Model):
             inputs["masked_lm_positions"] = masked_lm_positions
         else:
             inputs.append(masked_lm_positions)
+
+        # create prediction mask from special token ids to prevent these tokens from being predicted
+        if special_token_ids is not None:
+            # create a tensor of shape (#num_special_tokens, 1) from special token ids list
+            skip_ids = tf.constant(special_token_ids, dtype=tf.int64)[:, None]
+            sparse_mask = tf.SparseTensor(
+                values=[-float("inf")] * len(skip_ids),
+                indices=skip_ids,
+                # match the shape (or simply the length) of the vocabulary
+                dense_shape=[self.vocab_size]
+            )
+            self.prediction_mask = tf.sparse.to_dense(sparse_mask)
 
         self.inputs = inputs
 
@@ -121,7 +148,11 @@ class BERTModel(tf.keras.Model):
         # Inference may not have masked_lm_positions and mlm_logits are not needed
         if "masked_lm_positions" in inputs:
             masked_lm_positions = inputs["masked_lm_positions"]
-            outputs["mlm_logits"] = self.masked_lm(sequence_output, masked_lm_positions)
+            predicted_logits = self.masked_lm(sequence_output, masked_lm_positions)
+            # apply the prediction mask if given
+            if self.prediction_mask is not None:
+                predicted_logits += self.prediction_mask
+            outputs["mlm_logits"] = predicted_logits
 
         return outputs
 
