@@ -31,8 +31,14 @@ class Ranker(tf.Module):
             embedding_table = tf.gather(embedding_table, tokenized_rank_items)
 
         # multiply encoder sequence output with transposed embedding table to get vocab logits (pre-probabilities
-        # of the vocab
+        # of the vocab)
         vocab_logits = tf.linalg.matmul(prediction_logits, embedding_table, transpose_b=True)
+
+        # if the ranker models has a prediction mask, apply it to the vocab logits to prevent
+        # unwanted tokens from being predicted but only when the whole vocabulary is ranked
+        if rank_items is None and hasattr(self.ranker_model, "prediction_mask") \
+                and self.ranker_model.prediction_mask is not None:
+            vocab_logits += self.ranker_model.prediction_mask
 
         rank_item_token = self.dataloader.tokenizer.tokenize(rank_item)
 

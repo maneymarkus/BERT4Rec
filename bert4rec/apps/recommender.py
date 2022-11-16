@@ -25,6 +25,12 @@ class Recommender(tf.Module):
         # of the vocab
         vocab_logits = tf.linalg.matmul(prediction_logits, embedding_table, transpose_b=True)
 
+        # if the recommender models has a prediction mask, apply it to the vocab logits to prevent
+        # unwanted tokens from being predicted
+        if hasattr(self.recommender_model, "prediction_mask") \
+                and self.recommender_model.prediction_mask is not None:
+            vocab_logits += self.recommender_model.prediction_mask
+
         # get most probable vocab index (or simply token)
         vocab_index = tf.argmax(vocab_logits[0])
         # convert token to human-readable recommendation
