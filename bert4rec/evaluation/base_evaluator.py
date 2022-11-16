@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from bert4rec.dataloaders import BaseDataloader
 from bert4rec.evaluation.evaluation_metrics import EvaluationMetric
-from bert4rec.model import BERT4RecModelWrapper
+from bert4rec.models import BERT4RecModelWrapper
 
 
 class BaseEvaluator(abc.ABC):

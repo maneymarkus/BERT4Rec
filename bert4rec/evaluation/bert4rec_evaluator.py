@@ -5,7 +5,7 @@ from bert4rec.dataloaders import BaseDataloader
 from bert4rec.evaluation import evaluation_utils as utils
 from bert4rec.evaluation.base_evaluator import BaseEvaluator
 from bert4rec.evaluation.evaluation_metrics import *
-from bert4rec.model import BERT4RecModelWrapper
+from bert4rec.models import BERT4RecModelWrapper
 
 
 bert4rec_evaluation_metrics = [
@@ -31,9 +31,9 @@ class BERT4RecEvaluator(BaseEvaluator):
                  dataloader: BaseDataloader = None,
                  popular_items_ranking: list[int] = None) -> list[EvaluationMetric]:
 
-        if popular_items_ranking is None and dataloader is None:
-            raise ValueError(f"Either one of the `dataloader` parameter or the `popular_item_ranking` parameter "
-                             f"has to be given.")
+        if self.sample_popular and popular_items_ranking is None and dataloader is None:
+            raise ValueError(f"Either one of the `dataloader` parameter or the `popular_item_ranking` argument "
+                             f"has to be given if the sample_popular parameter is set to True.")
 
         if popular_items_ranking is None:
             popular_items_ranking = dataloader.create_popular_item_ranking_tokenized()
