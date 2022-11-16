@@ -4,7 +4,7 @@ import six
 import tensorflow as tf
 from tensorflow.python.util import deprecation
 
-from bert4rec.model.components import activations
+from bert4rec.models.components import activations
 
 
 @deprecation.deprecated(

@@ -5,8 +5,8 @@ from typing import Any, Callable, Optional, Union
 from absl import logging
 import tensorflow as tf
 
-from bert4rec.model.components import component_utils
-from bert4rec.model.components import layers
+from bert4rec.models.components import component_utils
+from bert4rec.models.components import layers
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
 _Activation = Union[str, Callable[..., Any]]
@@ -271,7 +271,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
         if 'embedding_layer' in config and config['embedding_layer'] is not None:
             warn_string = (
                 'You are reloading a model that was saved with a '
-                'potentially-shared embedding layer object. If you contine to '
+                'potentially-shared embedding layer object. If you continue to '
                 'train this model, the embedding layer will no longer be shared. '
                 'To work around this, load the model outside of the Keras API.')
             print('WARNING: ' + warn_string)
@@ -549,7 +549,7 @@ class BertEncoder(tf.keras.Model):
         if 'embedding_layer' in config and config['embedding_layer'] is not None:
             warn_string = (
                 'You are reloading a model that was saved with a '
-                'potentially-shared embedding layer object. If you contine to '
+                'potentially-shared embedding layer object. If you continue to '
                 'train this model, the embedding layer will no longer be shared. '
                 'To work around this, load the model outside of the Keras API.')
             print('WARNING: ' + warn_string)

@@ -17,8 +17,8 @@
 from absl import logging
 import tensorflow as tf
 
-from bert4rec.model.components import component_utils
-from bert4rec.model.components.layers import layer_utils as utils
+from bert4rec.models.components import component_utils
+from bert4rec.models.components.layers import layer_utils as utils
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")

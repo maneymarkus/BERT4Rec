@@ -4,7 +4,7 @@ import math
 from typing import Optional
 import tensorflow as tf
 
-from bert4rec.model.components import component_utils
+from bert4rec.models.components import component_utils
 
 Initializer = tf.keras.initializers.Initializer
 

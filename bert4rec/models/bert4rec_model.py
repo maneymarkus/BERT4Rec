@@ -8,8 +8,8 @@ from typing import Union, Optional
 
 from bert4rec.dataloaders.bert4rec_dataloaders import BERT4RecDataloader, BERT4RecML1MDataloader
 import bert4rec.dataloaders.dataloader_utils as dataloader_utils
-from bert4rec.model.components import layers, networks
-import bert4rec.model.model_utils as utils
+from bert4rec.models.components import layers, networks
+import bert4rec.models.model_utils as utils
 import bert4rec.tokenizers as tokenizers
 from bert4rec.trainers import optimizers, trainer_utils
 
@@ -34,7 +34,7 @@ SPECIAL_TOKEN_IDS = BERT4RecDataloader(0, 0)._SPECIAL_TOKEN_IDS
 
 class BERTModel(tf.keras.Model):
     """
-    NOTE: The model can only be saved, when completely initialized (when using the saving api.
+    NOTE: The model can only be saved, when completely initialized (when using the saving api).
     For a not further known reason (but empirically tested), saving a subclassed Keras model with a
     custom `train_step()` function throws an error when not fully initialized. In detail, this line
     `loss = self.compiled_loss(y_true, y_pred, regularization_losses=self.losses)` causes the error. Fully

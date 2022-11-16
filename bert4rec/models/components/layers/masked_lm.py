@@ -1,4 +1,4 @@
-"""Masked language model network."""
+"""Masked language models network."""
 # pylint: disable=g-classes-have-attributes
 import tensorflow as tf
 
