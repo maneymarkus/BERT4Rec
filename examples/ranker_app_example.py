@@ -1,10 +1,9 @@
 from absl import logging
 import pathlib
-import tensorflow as tf
 
 from bert4rec.apps import Ranker
 from bert4rec import dataloaders
-from bert4rec.model import BERT4RecModelWrapper, model_utils
+from bert4rec.models import BERT4RecModelWrapper, model_utils
 
 
 def main():
@@ -41,10 +40,11 @@ def main():
 
     ranker_app = Ranker(model, dataloader)
 
-    rank, assert_string = ranker_app(example, ground_truth, popular_items)
-    #rank, assert_string = ranker_app(example, ground_truth)
+    rank_1, assert_string_1 = ranker_app(example, ground_truth, popular_items)
+    rank_2, assert_string_2 = ranker_app(example, ground_truth)
 
-    print(assert_string)
+    print(assert_string_1)
+    print(assert_string_2)
 
 
 if __name__ == "__main__":

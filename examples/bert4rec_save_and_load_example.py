@@ -3,8 +3,8 @@ import pathlib
 
 from bert4rec.dataloaders import get_dataloader_factory, dataloader_utils
 from bert4rec.evaluation import BERT4RecEvaluator
-from bert4rec.model.components import networks
-from bert4rec.model import BERTModel, BERT4RecModelWrapper, model_utils
+from bert4rec.models.components import networks
+from bert4rec.models import BERTModel, BERT4RecModelWrapper, model_utils
 import bert4rec.trainers as trainers
 import bert4rec.utils as utils
 

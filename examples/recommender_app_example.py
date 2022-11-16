@@ -4,13 +4,13 @@ import random
 
 from bert4rec.apps import Recommender
 from bert4rec import dataloaders
-from bert4rec.model import BERT4RecModelWrapper, model_utils
+from bert4rec.models import BERT4RecModelWrapper, model_utils
 
 
 def main():
     logging.set_verbosity(logging.INFO)
 
-    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m_with_adamw"))
+    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m_with_adamw_2"))
 
     loaded_assets = BERT4RecModelWrapper.load(save_path)
     loaded_wrapper = loaded_assets["model_wrapper"]

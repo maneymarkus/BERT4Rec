@@ -4,8 +4,9 @@ import pathlib
 import tensorflow as tf
 
 from bert4rec.dataloaders import get_dataloader_factory, dataloader_utils
-from bert4rec.model.components import networks
-from bert4rec.model import BERTModel
+from bert4rec.models.components import networks
+from bert4rec.models import BERTModel
+from bert4rec.trainers import trainer_utils
 import bert4rec.utils as utils
 
 
@@ -46,6 +47,8 @@ def main():
     y_true = example["masked_lm_ids"]
     sequence_output = predictions["sequence_output"]
     masked_token_sequence = tf.gather(sequence_output, example["masked_lm_positions"], axis=1, batch_dims=1)
+    # create vocab logits by multiplying the masked token sequence of shape (#num_masked_tokens, embedding_width)
+    # with the transposed embedding_table of (then) shape (embedding_with, vocab_size)
     y_pred = tf.linalg.matmul(masked_token_sequence, embedding_table, transpose_b=True)
     scce = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, ignore_class=0)
     loss = scce(y_true, y_pred)
@@ -71,6 +74,12 @@ def main():
     loss = scce(y_true, y_pred_mlm)
     logging.info("mlm_logits_loss:")
     logging.info(loss)
+
+    # with using masked loss
+    mscce = trainer_utils.MaskedSparseCategoricalCrossentropy()
+    masked_loss = mscce(y_true, y_pred_mlm)
+    logging.info("masked_loss:")
+    logging.info(masked_loss)
 
 
 if __name__ == "__main__":
