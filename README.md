@@ -28,6 +28,202 @@ from the command line via `pipenv run` as they are included as pipenv scripts. T
 can be and is defined in their respective configuration files in the projects root directory
 (`.coveragerc` and `.pylintrc`).
 
+### Data preparation
+
+```python
+from bert4rec import dataloaders
+
+# 1. Instantiate dataloader
+# METHOD ONE: via abstract factory pattern
+dataloader_factory = dataloaders.get_dataloader_factory()
+dataloader = dataloader_factory.create_ml_1m_dataloader()
+# custom values may be given via kwargs
+
+# METHOD TWO: via direct class instantiation
+dataloader_2 = dataloaders.BERT4RecML1MDataloader()
+
+# The dataloader exposes many methods:
+# generate vocab (basically fill the tokenizer vocab)
+dataloader.generate_vocab()
+
+# load the represented data into a dataset
+ds = dataloader.load_data_into_ds()
+
+# load the represented data directly into three separate datasets (train, validation, test)
+train_ds, val_ds, test_ds = dataloader.load_data_into_split_ds()
+
+# create a ranking of all the items in the dataset according to their popularity
+pop_items_ranking = dataloader.create_popular_item_ranking()
+
+# directly have the ranking tokenized
+tokenized_pop_items_ranking = dataloader.create_popular_item_ranking_tokenized()
+
+# directly generate three separate datasets already prepared for training, validation and
+# testing tasks (items are tokenized and masked language model is applied
+train_ds, val_ds, test_ds = dataloader.prepare_training()
+
+# preprocess a dataset on your own
+custom_train_ds = dataloader_2.preprocess_dataset(train_ds, apply_mlm = False)
+
+# prepare input for inference tasks (e.g. recommendation on the basis of a "real" user sequence)
+sequence = list(...)
+model_input = dataloader.prepare_inference(sequence)
+```
+
+### Model instantiation
+
+```python
+import pathlib
+
+from bert4rec import models
+from bert4rec.models import model_utils
+from bert4rec.models.components import networks
+from bert4rec import utils
+
+# METHOD ONE: via class instantiation and models parameters
+vocab_size = 200
+num_layers = 6
+num_attention_heads = 8
+# See class definition for which parameters can be set
+encoder = networks.BertEncoder(vocab_size=vocab_size, 
+                               num_layers=num_layers, 
+                               num_attention_heads=num_attention_heads)
+model_1 = models.BERTModel(encoder)
+
+
+# METHOD TWO: via predefined models config (can be found and created in the respective configs directory)
+# freely defined path
+config_path = pathlib.Path("../config/bert_train_configs/ml-1m_128.json")
+# or safer: path relative from project root
+config_path = utils.get_project_root().joinpath("config/bert_train_configs/ml-1m_128.json")
+encoder_config = utils.load_json_config(config_path)
+encoder_2 = networks.BertEncoder(vocab_size, **encoder_config)
+model_2 = models.BERTModel(encoder_2)
+
+
+# METHOD THREE: via reloading of a saved models
+# freely defined path
+save_path = pathlib.Path("path/to/model_directory")
+# or with utility functions 
+save_path = model_utils.determine_model_path(pathlib.Path("model_directory_name"))
+loaded_assets = models.BERT4RecModelWrapper.load(save_path)
+loaded_wrapper = loaded_assets["model_wrapper"]
+model_3 = loaded_wrapper.bert_model
+dataloader_config = {}
+if "tokenizer" in loaded_assets:
+    tokenizer = loaded_assets["tokenizer"]
+    dataloader_config["tokenizer"] = tokenizer
+```
+
+### Model training
+
+```python
+import pathlib
+import tensorflow as tf
+
+from bert4rec import models
+from bert4rec.models.components import networks
+from bert4rec import trainers
+from bert4rec.trainers import optimizers
+
+vocab_size = 200
+
+# model is already instantiated/reloaded
+encoder = networks.BertEncoder(vocab_size)
+model = models.BERTModel(encoder)
+
+# 1. Trainer instantiation
+# METHOD ONE: via factory method
+trainer = trainers.get(**{"model": model})
+# METHOD TWO: via direct class instantiation
+trainer_2 = trainers.BERT4RecTrainer(model)
+
+# 2. initialize model for training
+# METHOD ONE: use default values for model (as described in respective papers)
+trainer.initialize_model()
+# METHOD TWO: use custom values for model training
+# 2.1 Optimizer:
+# METHOD ONE: use default values with factory method
+optimizer = optimizers.get()
+# METHOD TWO: use custom values with factory method
+optimizer_config = {
+  "num_warmup_steps": 5000,
+  "weight_decay_rate": 0.005,
+  "epsilon": 1e-5,
+}
+optimizer_2 = optimizers.get(**optimizer_config)
+# METHOD THREE: use function to create adamw optimizer (as the creation is a bit tricky)
+optimizer_3 = optimizers.create_adam_w_optimizer(init_lr=6e-5, num_train_steps=200000, beta_1=0.8)
+
+# 2.2 Loss
+# only an example, the usage of the regular instead of the masked sparse categorical crossentropy
+# is discouraged in conjunction with the masked language model
+loss = tf.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+# 2.3 Metrics
+# only an example, the usage of the regular instead of the masked sparse categorical accuracy
+# is discouraged in conjunction with the masked language model
+accuracy_metric = tf.keras.metrics.SparseCategoricalAccuracy()
+...
+
+metrics = [
+  accuracy_metric,
+  ...
+]
+
+trainer_2.initialize_model(optimizer_3, loss, metrics)
+
+# 3. Train the model
+train_ds = tf.data.Dataset()
+val_ds = tf.data.Dataset()
+# optional checkpoint path to save and possibly restore model weights from
+checkpoint_path = pathlib.Path("path/to/checkpoints")
+epochs = 10
+history = trainer_2.train(train_ds, val_ds, checkpoint_path, epochs)
+```
+
+### Model evaluation
+```python
+import tensorflow as tf
+
+from bert4rec import evaluation
+from bert4rec import models
+from bert4rec.models.components import networks
+
+vocab_size = 200
+
+# model is already instantiated/reloaded
+encoder = networks.BertEncoder(vocab_size)
+model = models.BERTModel(encoder)
+model_wrapper = models.BERT4RecModelWrapper(model)
+
+# 1. Evaluator instantiation
+# METHOD ONE: via factory method with default values
+evaluator = evaluation.get()
+# METHOD TWO: via direct class instantiation with default values
+evaluator_2 = evaluation.BERT4RecEvaluator()
+# you may add custom values:
+eval_metrics = [
+  evaluation.Counter(name="Number Assessments"),
+  evaluation.NDCG(10),
+  evaluation.NDCG(20),
+  evaluation.NDCG(50),
+  evaluation.HR(1),
+]
+evaluator_3 = evaluation.get(**{"metrics": eval_metrics, "sample_popular": False})
+
+# 2. Evaluate model
+test_batches = tf.data.Dataset()
+metrics_objects = evaluator_3.evaluate(model_wrapper, test_batches)
+# when the sample_popular parameter is set to true (default) you have to give a 
+# popular items ranking list or a dataloader which can generate this list
+
+# The evaluate method returns the list of metric objects. If you want to have the metrics results
+# in a dictionary you can call this method:
+metric_results_dict = evaluator_3.get_metrics_results()
+```
+
+
 ## Directory structure
 
 - #### bert4rec
