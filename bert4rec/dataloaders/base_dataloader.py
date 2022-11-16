@@ -46,12 +46,14 @@ class BaseDataloader(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def prepare_training(self):
+    def prepare_training(self, finetuning_split: float = 0.1):
         """
         Prepares the represented dataset completely for training. This includes generating the vocab
         for the tokenizer, splitting the dataset into train, validation and test parts, preparing parts
         of the training data for finetuning, making batches,
 
+        :param finetuning_split: Determines if and what share of the train dataset should be
+            preprocessed for finetuning purposes
         :return:
         """
         pass

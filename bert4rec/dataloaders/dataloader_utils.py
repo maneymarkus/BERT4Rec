@@ -133,6 +133,21 @@ def split_sequence_df(df: pd.DataFrame, group_by_column: str, sequence_column: s
     return train_df, val_df, test_df
 
 
+def load_movielens_data_in_split_ds(df: pd.DataFrame, train_duplication_factor: int) \
+        -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
+    df = df.sort_values(by="timestamp")
+    train_df, val_df, test_df = split_sequence_df(df, "uid", "movie_name")
+    datatypes = ["int64", "list"]
+    train_ds = convert_df_to_ds(train_df, datatypes)
+    val_ds = convert_df_to_ds(val_df, datatypes)
+    test_ds = convert_df_to_ds(test_df, datatypes)
+
+    if train_duplication_factor > 1:
+        train_ds = train_ds.repeat(train_duplication_factor)
+
+    return train_ds, val_ds, test_ds
+
+
 def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
                                max_selections_per_seq: int,
                                mask_token_id: int,
@@ -196,7 +211,7 @@ def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
 
         # keep original token in 1 - mask_token_rate + random_token_rate of the cases
         replaced_token = sequence[index]
-        # masked language model
+        # masked language models
         rn = random.random()
         # insert random token at random_token_rate
         if rn < mask_token_rate + random_token_rate:

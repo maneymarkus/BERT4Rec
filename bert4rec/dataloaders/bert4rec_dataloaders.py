@@ -26,12 +26,15 @@ class BERT4RecDataloader(BaseDataloader):
                  masked_lm_prob: float = 0.2,
                  mask_token_rate: float = 1.0,
                  random_token_rate: float = 0.0,
-                 input_duplication_factor: int = 10,
+                 input_duplication_factor: int = 1,
                  tokenizer: BaseTokenizer = None):
         # BERT4Rec works with simple tokenizer
         if tokenizer is None:
             tokenizer = tokenizers.get("simple")
         super().__init__(tokenizer)
+
+        if input_duplication_factor < 1:
+            raise ValueError("An input_duplication_factor of less than 1 is not allowed!")
 
         self._PAD_TOKEN = "[PAD]"
         self._MASK_TOKEN = "[MASK]"
@@ -42,6 +45,8 @@ class BERT4RecDataloader(BaseDataloader):
         self._RANDOM_TOKEN_ID = self.tokenizer.tokenize(self._RANDOM_TOKEN)
         self._UNK_TOKEN_ID = self.tokenizer.tokenize(self._UNK_TOKEN)
         self._SPECIAL_TOKENS = [self._PAD_TOKEN, self._UNK_TOKEN, self._MASK_TOKEN, self._RANDOM_TOKEN]
+        # needs to be ordered for the creation of the prediction mask in BERT4Rec models
+        self._SPECIAL_TOKEN_IDS = [self._PAD_TOKEN_ID, self._MASK_TOKEN_ID, self._RANDOM_TOKEN_ID, self._UNK_TOKEN_ID]
         self._MAX_PREDICTIONS_PER_SEQ = max_predictions_per_seq
         self._MAX_SEQ_LENGTH = max_seq_len
         self.masked_lm_prob = masked_lm_prob
@@ -57,12 +62,9 @@ class BERT4RecDataloader(BaseDataloader):
 
     def load_data_into_split_ds(self, duplication_factor: int = None) \
             -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
-        if duplication_factor is None:
-            duplication_factor = self.input_duplication_factor
-
-        if duplication_factor < 1:
+        if duplication_factor is not None and duplication_factor < 1:
             raise ValueError(f"A duplication factor of less than 1 (given: {duplication_factor}) "
-                             f"is not allowed!")
+                             "is not allowed!")
 
     def generate_vocab(self, source=None) -> True:
         if source is None:
@@ -74,22 +76,26 @@ class BERT4RecDataloader(BaseDataloader):
     def create_popular_item_ranking(self) -> list:
         pass
 
-    def prepare_training(self):
+    def prepare_training(self, finetuning_split: float = 0.1):
+        if finetuning_split < 0 or finetuning_split > 1:
+            raise ValueError("The parameter finetuning_split can only be a float between 0 and 1 (including).")
+
         train_ds, val_ds, test_ds = self.load_data_into_split_ds(duplication_factor=self.input_duplication_factor)
 
         # make a small proportion of the dataset to have only the last item masked -> this works as finetuning
-        train_ds, finetuning_train_ds, _ = utils.split_dataset(
-            train_ds, train_split=0.9, val_split=0.1, test_split=0.0
-        )
-        train_ds = self.preprocess_dataset(train_ds)
-        finetuning_train_ds = self.preprocess_dataset(finetuning_train_ds, finetuning=True)
+        if finetuning_split > 0:
+            train_ds, finetuning_train_ds, _ = utils.split_dataset(
+                train_ds, train_split=0.9, val_split=0.1, test_split=0.0
+            )
+            train_ds = self.preprocess_dataset(train_ds)
+            finetuning_train_ds = self.preprocess_dataset(finetuning_train_ds, finetuning=True)
 
-        full_train_ds = train_ds.concatenate(finetuning_train_ds)
+            train_ds = train_ds.concatenate(finetuning_train_ds)
 
         val_ds = self.preprocess_dataset(val_ds, finetuning=True)
         test_ds = self.preprocess_dataset(test_ds, finetuning=True)
 
-        return full_train_ds, val_ds, test_ds
+        return train_ds, val_ds, test_ds
 
     def preprocess_dataset(self,
                            ds: tf.data.Dataset = None,
@@ -100,7 +106,7 @@ class BERT4RecDataloader(BaseDataloader):
 
         :param ds: Given dataset to preprocess. Must have a similar format as the represented dataset or is the
             represented dataset
-        :param apply_mlm: Whether to apply the masked language model preprocessing or not
+        :param apply_mlm: Whether to apply the masked language models preprocessing or not
         :param finetuning: Whether to create some samples (10% of the dataset) preprocessed for finetuning (only the
             last item is masked as specific training for the inference task later on)
         :return:
@@ -339,19 +345,12 @@ class BERT4RecML1MDataloader(BERT4RecDataloader):
         :return:
         """
         super().load_data_into_split_ds(duplication_factor)
+        if duplication_factor is None:
+            duplication_factor = self.input_duplication_factor
 
         df = ml_1m.load_ml_1m()
-        df = df.sort_values(by="timestamp")
-        train_df, val_df, test_df = utils.split_sequence_df(df, "uid", "movie_name")
-        datatypes = ["int64", "list"]
-        train_ds = utils.convert_df_to_ds(train_df, datatypes)
-        val_ds = utils.convert_df_to_ds(val_df, datatypes)
-        test_ds = utils.convert_df_to_ds(test_df, datatypes)
 
-        if duplication_factor > 1:
-            train_ds = train_ds.repeat(duplication_factor)
-
-        return train_ds, val_ds, test_ds
+        return utils.load_movielens_data_in_split_ds(df, duplication_factor)
 
     def generate_vocab(self, source=None) -> True:
         if source is None:
@@ -412,19 +411,12 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
         :return:
         """
         super().load_data_into_split_ds(duplication_factor)
+        if duplication_factor is None:
+            duplication_factor = self.input_duplication_factor
 
-        df = ml_1m.load_ml_1m()
-        df = df.sort_values(by="timestamp")
-        train_df, val_df, test_df = utils.split_sequence_df(df, "uid", "movie_name")
-        datatypes = ["int64", "list"]
-        train_ds = utils.convert_df_to_ds(train_df, datatypes)
-        val_ds = utils.convert_df_to_ds(val_df, datatypes)
-        test_ds = utils.convert_df_to_ds(test_df, datatypes)
+        df = ml_20m.load_ml_20m()
 
-        if duplication_factor > 1:
-            train_ds = train_ds.repeat(duplication_factor)
-
-        return train_ds, val_ds, test_ds
+        return utils.load_movielens_data_in_split_ds(df, duplication_factor)
 
     def generate_vocab(self, source=None) -> True:
         if source is None:
@@ -486,7 +478,7 @@ if __name__ == "__main__":
     tokenizer = dataloader.get_tokenizer()
     ds = dataloader.load_data_into_ds()
     prepared_ds = dataloader.preprocess_dataset(ds, True, False)
-    test_data = tf.ragged.constant([[random.choice(string.ascii_letters) for _ in range(25)]])
+    test_data = [random.choice(string.ascii_letters) for _ in range(25)]
     # logging.debug(test_data)
     model_input = dataloader.feature_preprocessing(None, test_data, True)
     # logging.debug(model_input)
