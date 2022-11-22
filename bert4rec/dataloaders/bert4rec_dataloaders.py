@@ -84,13 +84,16 @@ class BERT4RecDataloader(BaseDataloader):
 
         # make a small proportion of the dataset to have only the last item masked -> this works as finetuning
         if finetuning_split > 0:
+            train_split = 1 - finetuning_split
             train_ds, finetuning_train_ds, _ = utils.split_dataset(
-                train_ds, train_split=0.9, val_split=0.1, test_split=0.0
+                train_ds, train_split=train_split, val_split=finetuning_split, test_split=0.0
             )
             train_ds = self.preprocess_dataset(train_ds)
             finetuning_train_ds = self.preprocess_dataset(finetuning_train_ds, finetuning=True)
 
             train_ds = train_ds.concatenate(finetuning_train_ds)
+        else:
+            train_ds = self.preprocess_dataset(train_ds)
 
         val_ds = self.preprocess_dataset(val_ds, finetuning=True)
         test_ds = self.preprocess_dataset(test_ds, finetuning=True)
