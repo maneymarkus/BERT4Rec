@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import random
 import tensorflow as tf
-import tensorflow_text as tf_text
 import tqdm
 
 
@@ -177,7 +176,7 @@ def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
     sequence = sequence_tensor.numpy()
     dtype = sequence_tensor.dtype
 
-    # set random seed for reproducibility
+    # set random seed for reproducibility (default is None -> different seed each call)
     random.seed(seed)
 
     # remove special tokens from sequence to calculate how many predictions can be inserted by applying the mlm
@@ -197,8 +196,10 @@ def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
     # create a list of indexes (item positions) in the sequence that can possibly be masked
     pos_indexes = [i for i, token in enumerate(sequence) if token not in special_token_ids]
     random.shuffle(pos_indexes)
-    # only select num_to_predict from pos_indexes and sort again
-    pos_indexes = pos_indexes[:num_to_predict]
+    # only select num_to_predict - 1 indexes from pos_indexes and sort again
+    pos_indexes = pos_indexes[:num_to_predict-1]
+    # always mask the last element (train to predict)
+    pos_indexes.append(len(sequence) - 1)
     pos_indexes.sort()
 
     masked_lm_ids = []
