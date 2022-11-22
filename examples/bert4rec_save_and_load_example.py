@@ -1,5 +1,6 @@
 from absl import logging
 import pathlib
+import tensorflow as tf
 
 from bert4rec.dataloaders import get_dataloader_factory, dataloader_utils
 from bert4rec.evaluation import BERT4RecEvaluator
@@ -43,8 +44,8 @@ def main():
 
     evaluator = BERT4RecEvaluator()
 
-    metrics = evaluator.evaluate(model_wrapper, test_batches, dataloader)
-    print(metrics)
+    evaluator.evaluate(model_wrapper, test_batches, dataloader)
+    print(evaluator.get_metrics_results())
 
     save_path = pathlib.Path("example_save_model")
     model_wrapper.save(save_path)
@@ -54,8 +55,8 @@ def main():
 
     evaluator.reset_metrics()
 
-    reloaded_metrics = evaluator.evaluate(reloaded_model_wrapper, test_batches, dataloader)
-    print(reloaded_metrics)
+    evaluator.evaluate(reloaded_model_wrapper, test_batches, dataloader)
+    print(evaluator.get_metrics_results())
 
 
 if __name__ == "__main__":
