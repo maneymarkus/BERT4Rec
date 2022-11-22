@@ -3,9 +3,9 @@ import tensorflow as tf
 from .adam_w_optimizer import *
 
 
-def create_adam_w_optimizer(init_lr: float = 5e-5,
+def create_adam_w_optimizer(init_lr: float = 1e-4,
                             num_train_steps: int = 100000,
-                            num_warmup_steps: int = 10000,
+                            num_warmup_steps: int = 100,
                             end_lr: float = 0.0,
                             weight_decay_rate: float = 0.01,
                             beta_1: float = 0.9,
@@ -18,11 +18,10 @@ def create_adam_w_optimizer(init_lr: float = 5e-5,
     (except for first three params)
 
     :param init_lr: Initial learning rate. Default value from:
-    https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run.py#L76
-    :param num_train_steps: Number of training steps. Initial value from:
-    https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run.py#L79
+    https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run_ml-1m.sh#L45
+    :param num_train_steps: Number of training steps
     :param num_warmup_steps: Number of warmup steps. Initial value from:
-    https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run.py#L81
+    https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run_ml-1m.sh#L44
     :param end_lr:
     :param weight_decay_rate:
     :param beta_1:
