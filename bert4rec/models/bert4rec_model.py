@@ -218,7 +218,8 @@ class BERT4RecModelWrapper:
                 "model": "BERT4Rec",
                 "tokenizer": None,
                 "last_trained": None,
-                "trained_on_dataset": None
+                "trained_on_dataset": None,
+                "encoder_config": self.bert_model.encoder.get_config()
             }
         )
 
