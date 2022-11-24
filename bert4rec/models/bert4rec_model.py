@@ -311,6 +311,36 @@ class BERT4RecModelWrapper:
 
         return loaded_assets
 
+    def rank_with_mlm_logits(self,
+                             encoder_input: dict,
+                             rank_items: list = None):
+
+        encoder_output = self.bert_model(encoder_input)
+        mlm_logits_batch = encoder_output["mlm_logits"]
+
+        if "masked_lm_weights" in encoder_input:
+            masked_lm_weights = tf.cast(encoder_input["masked_lm_weights"], tf.bool)
+            mlm_logits_batch = tf.ragged.boolean_mask(mlm_logits_batch, masked_lm_weights)
+
+        rankings = list()
+        # iterate over batch
+        for b_i, mlm_logits in enumerate(mlm_logits_batch):
+            batch_rankings = []
+
+            # iterate over tokens in this tensor
+            for mlm_i, token_logits in enumerate(mlm_logits):
+                if rank_items is not None and type(rank_items[0]) is list:
+                    # => individual ranking list for each token (output)
+                    token_logits = tf.gather(token_logits, rank_items[b_i][mlm_i], axis=-1)
+                    rank_items_list = rank_items[b_i][mlm_i]
+                    sorted_indexes = tf.argsort(token_logits, direction="DESCENDING")
+                    ranking = tf.gather(rank_items_list, sorted_indexes)
+                else:
+                    ranking = tf.argsort(token_logits, direction="DESCENDING")
+                batch_rankings.append(ranking)
+            rankings.append(batch_rankings)
+        return rankings
+
     def rank(self,
              encoder_input: dict,
              rank_items: list = None,

@@ -97,7 +97,7 @@ class BERT4RecEvaluator(BaseEvaluator):
             ground_truth_items_batch.append(ground_truth_items)
             selected_mlm_positions_batch.append(selected_mlm_positions)
 
-        rankings, probabilities = wrapper.rank(test_batch, rank_item_lists_batch, selected_mlm_positions_batch)
+        rankings = wrapper.rank_with_mlm_logits(test_batch, rank_item_lists_batch)
 
         for i, b in enumerate(ground_truth_items_batch):
             for j, idx in enumerate(b):
