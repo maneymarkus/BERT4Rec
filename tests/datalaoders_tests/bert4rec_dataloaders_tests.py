@@ -149,7 +149,8 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         sequence = test_utils.generate_random_word_list()
         model_input = self.dataloader.prepare_inference(sequence)
         self.assertIsInstance(model_input, dict)
-        dict_keys = ["labels", "input_word_ids", "input_mask", "input_type_ids"]
+        dict_keys = ["labels", "input_word_ids", "input_mask", "input_type_ids",
+                     "masked_lm_ids", "masked_lm_positions", "masked_lm_weights"]
         self.assertListEqual(list(model_input.keys()), dict_keys)
         input_word_ids = model_input["input_word_ids"]
         self.assertEqual(tf.rank(input_word_ids).numpy(), 2)
