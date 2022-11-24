@@ -48,8 +48,9 @@ class BERT4RecTrainer(BaseTrainer):
             )
             self.append_callback(model_checkpoint_callback)
             if checkpoint_path.parent.is_dir() and tf.train.latest_checkpoint(checkpoint_path.parent) is not None:
-                status = self.model.load_weights(tf.train.latest_checkpoint(checkpoint_path.parent)) \
-                    .assert_existing_objects_matched()
+                status = self.model.load_weights(tf.train.latest_checkpoint(checkpoint_path.parent))
+                status.expect_partial()
+                status.assert_existing_objects_matched()
                 # disabled as properly reloading the optimizer does not work yet unfortunately
                 #status.assert_consumed()
 
