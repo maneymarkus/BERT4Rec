@@ -285,10 +285,11 @@ class BERT4RecDataloader(BaseDataloader):
         # HINT: remove elements from beginning since we want to have the most recent history to "predict the future"
         sequence = sequence[-self._MAX_SEQ_LENGTH + 1:]
 
-        # add [MASK] token to end of sequence
-        sequence.append(self._MASK_TOKEN)
+        # add [RANDOM] token to end of sequence (serves as a placeholder for inserting
+        # the mask token, to be able to get the mlm_logits for this token for prediction purposes)
+        sequence.append(self._RANDOM_TOKEN)
 
-        preprocessed_sequence = self.feature_preprocessing(None, sequence, False, False)
+        preprocessed_sequence = self.feature_preprocessing(None, sequence, True, True)
         # remove user id key from dict as it is None
         del preprocessed_sequence["user_id"]
 
@@ -296,8 +297,6 @@ class BERT4RecDataloader(BaseDataloader):
         for key, value in preprocessed_sequence.items():
             if tf.is_tensor(value):
                 preprocessed_sequence[key] = tf.expand_dims(value, axis=0)
-
-        # no masked lm applied here, as inference does not have a ground truth
 
         return preprocessed_sequence
 
