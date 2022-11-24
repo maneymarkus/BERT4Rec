@@ -7,16 +7,20 @@ from bert4rec.dataloaders import BaseDataloader, BERT4RecDataloader
 
 def generate_random_word_list(min_word_length: int = 5,
                               max_word_length: int = 25,
-                              size: int = 100) -> list[str]:
+                              size: int = 100,
+                              seed: int = None) -> list[str]:
     """
     Generate a list of length `vocab_size` with random words with a minimum length of
-    `min_word_length`
+    `min_word_length`. Parameter `seed` can be given for reproducible results
 
     :param min_word_length:
     :param max_word_length:
     :param size:
+    :param seed:
     :return:
     """
+    random.seed(seed)
+
     # generate random word list
     words = [
         "".join(
@@ -34,7 +38,10 @@ def generate_random_word_list(min_word_length: int = 5,
 def generate_random_sequence_dataset(ds_size: int = 1000,
                                      seq_min_len: int = 5,
                                      seq_max_len: int = 100,
-                                     dataloader: BaseDataloader = None) -> (tf.data.Dataset, BaseDataloader):
+                                     dataloader: BaseDataloader = None,
+                                     seed: int = None) -> (tf.data.Dataset, BaseDataloader):
+    random.seed(seed)
+
     subject_list = []
     sequence_list = []
     for i in range(ds_size):
