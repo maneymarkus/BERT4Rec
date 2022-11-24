@@ -21,24 +21,34 @@ class Ranker(tf.Module):
 
         predictions = self.ranker_model(model_input, training=False)
 
-        sequence_output = predictions["sequence_output"]
-        # get output for the last token in the sequence (the manually added masked token to trigger inference)
-        prediction_logits = sequence_output[:, -1, :]
-        embedding_table = self.ranker_model.encoder.get_embedding_table()
-
         if rank_items is not None:
             tokenized_rank_items = self.dataloader.tokenizer.tokenize(rank_items)
-            embedding_table = tf.gather(embedding_table, tokenized_rank_items)
 
-        # multiply encoder sequence output with transposed embedding table to get vocab logits (pre-probabilities
-        # of the vocab)
-        vocab_logits = tf.linalg.matmul(prediction_logits, embedding_table, transpose_b=True)
+        if "mlm_logits" in predictions:
+            # get output for the last token in the sequence of *masked lm logits*
+            vocab_logits = predictions["mlm_logits"][:, -1]
 
-        # if the ranker models has a prediction mask, apply it to the vocab logits to prevent
-        # unwanted tokens from being predicted but only when the whole vocabulary is ranked
-        if rank_items is None and hasattr(self.ranker_model, "prediction_mask") \
-                and self.ranker_model.prediction_mask is not None:
-            vocab_logits += self.ranker_model.prediction_mask
+            if rank_items is not None:
+                vocab_logits = tf.gather(vocab_logits, tokenized_rank_items, axis=-1)
+        else:
+
+            sequence_output = predictions["sequence_output"]
+            # get output for the last token in the sequence (the manually added masked token to trigger inference)
+            prediction_logits = sequence_output[:, -1, :]
+            embedding_table = self.ranker_model.encoder.get_embedding_table()
+
+            if rank_items is not None:
+                embedding_table = tf.gather(embedding_table, tokenized_rank_items)
+
+            # multiply encoder sequence output with transposed embedding table to get vocab logits (pre-probabilities
+            # of the vocab)
+            vocab_logits = tf.linalg.matmul(prediction_logits, embedding_table, transpose_b=True)
+
+            # if the ranker models has a prediction mask, apply it to the vocab logits to prevent
+            # unwanted tokens from being predicted but only when the whole vocabulary is ranked
+            if rank_items is None and hasattr(self.ranker_model, "prediction_mask") \
+                    and self.ranker_model.prediction_mask is not None:
+                vocab_logits += self.ranker_model.prediction_mask
 
         rank_item_token = self.dataloader.tokenizer.tokenize(rank_item)
 
@@ -51,8 +61,11 @@ class Ranker(tf.Module):
         if rank_items is not None:
             vocab_ranking = tf.gather(tokenized_rank_items, sorted_indexes)
 
-        # np.where() yields tuple and array
+        # np.where() yields an array in a tuple
         rank = np.where(vocab_ranking.numpy() == rank_item_token)[0][0]
+
+        # add 1 to rank since it's actually the index
+        rank += 1
 
         assert_string = f"Rank of \"{rank_item}\" is {rank} in the given sequence:\n{sequence}\n"
         if rank_items is not None:
