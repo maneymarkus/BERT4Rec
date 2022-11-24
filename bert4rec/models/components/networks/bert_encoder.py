@@ -12,6 +12,10 @@ _Initializer = Union[str, tf.keras.initializers.Initializer]
 _Activation = Union[str, Callable[..., Any]]
 
 
+def approx_gelu(x):
+    return tf.keras.activations.gelu(x, approximate=True)
+
+
 class BertEncoderV2(tf.keras.layers.Layer):
     """Bi-directional Transformer-based encoder network.
 
@@ -70,7 +74,7 @@ class BertEncoderV2(tf.keras.layers.Layer):
             max_sequence_length: int = 512,
             type_vocab_size: int = 16,
             inner_dim: int = 3072,
-            inner_activation: _Activation = "gelu",
+            inner_activation: _Activation = approx_gelu,
             output_dropout: float = 0.1,
             attention_dropout: float = 0.1,
             initializer: _Initializer = tf.keras.initializers.TruncatedNormal(

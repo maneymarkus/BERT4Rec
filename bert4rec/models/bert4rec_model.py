@@ -290,6 +290,7 @@ class BERT4RecModelWrapper:
             "RelativePositionBias": layers.RelativePositionBias,
             "masked_accuracy": trainer_utils.masked_accuracy,
             "MaskedSparseCategoricalCrossentropy": trainer_utils.MaskedSparseCategoricalCrossentropy,
+            "approx_gelu": networks.bert_encoder.approx_gelu
         })
         wrapper = cls(loaded_bert)
         loaded_assets["model_wrapper"] = wrapper
