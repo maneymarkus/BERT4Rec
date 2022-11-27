@@ -2,12 +2,10 @@ from absl import logging
 import copy
 import json
 import pathlib
-import random
 import tensorflow as tf
 from typing import Union, Optional
 
-from bert4rec.dataloaders.bert4rec_dataloaders import BERT4RecDataloader, BERT4RecML1MDataloader
-import bert4rec.dataloaders.dataloader_utils as dataloader_utils
+from bert4rec.dataloaders import BERT4RecDataloader
 from bert4rec.models.components import layers, networks
 import bert4rec.models.model_utils as utils
 import bert4rec.tokenizers as tokenizers
@@ -421,42 +419,3 @@ class BERT4RecModelWrapper:
             self._meta_config.pop(key, None)
 
         return True
-
-
-if __name__ == "__main__":
-    dataloader = BERT4RecML1MDataloader()
-    dataloader.generate_vocab()
-    ds = dataloader.preprocess_dataset()
-    batches = dataloader_utils.make_batches(ds, batch_size=8)
-    for element in batches.take(1):
-        example = element
-    # print(example)
-    tokenizer = dataloader.get_tokenizer()
-
-    bert_encoder = networks.BertEncoder(30522)
-    model = BERTModel(bert_encoder)
-    model.compile(optimizer="adam", loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True))
-    _ = model(model.inputs)
-    wrapper = BERT4RecModelWrapper(model)
-    embedding_table = model.encoder.get_embedding_table()
-    gathered_embeddings = tf.gather(embedding_table, [0, 3, 30519, 30521])
-
-    predictions = model(example)
-    print(predictions)
-
-    # See model docs to understand, why this is necessary
-    model.train_step(example)
-    save_path = pathlib.Path("my_model")
-    wrapper.save(save_path, tokenizer)
-    del wrapper, model, bert_encoder
-    loaded_assets = BERT4RecModelWrapper.load(save_path)
-    loaded_tokenizer = loaded_assets["tokenizer"]
-    loaded_wrapper = loaded_assets["model_wrapper"]
-
-    print(loaded_wrapper.bert_model)
-    print(loaded_wrapper.bert_model(example))
-
-    rank_items = [random.randint(0, 30521) for _ in range(5)]
-    rankings, probabilities = loaded_wrapper.rank(example, rank_items, example["masked_lm_positions"])
-    print(rank_items)
-    print(rankings)
