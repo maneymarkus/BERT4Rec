@@ -1,4 +1,5 @@
 import tensorflow as tf
+from typing import Union
 
 from .adam_w_optimizer import *
 
@@ -60,7 +61,8 @@ optimizers_map = {
 }
 
 
-def get(identifier: str = "adamw", **kwargs) -> tf.keras.optimizers.Optimizer:
+def get(identifier: Union[str, tf.keras.optimizers.Optimizer, callable] = "adamw",
+        **kwargs) -> tf.keras.optimizers.Optimizer:
     """
     Factory method to return a concrete optimizer instance according to the given identifier
 
