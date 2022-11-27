@@ -1,7 +1,12 @@
 # BERT4Rec on Tensorflow 2
 
 ## Get started
-0. Install [Python](https://www.python.org/about/gettingstarted/) 
+
+> NOTE: Since TensorFlow 2.11 Windows is not supported natively anymore. See:
+> [https://www.tensorflow.org/install](https://www.tensorflow.org/install) and
+> [https://www.tensorflow.org/install/pip](https://www.tensorflow.org/install/pip)
+
+0. Install [Python](https://www.python.org/about/gettingstarted/). (3.7 - 3.10)
 1. Clone this repository (`git clone url`)
 2. Usage of pipenv as the virtual environment and dependency manager is recommended. 
 Get [Pipenv](https://pypi.org/project/pipenv/)
@@ -13,14 +18,116 @@ application.
 
 ## How to use
 Have a look in the examples directory to get a quick overview on how to use this repository.
-The application is build with OOP principles in mind. For most of the directories/modules 
+The application was and is built with OOP principles in mind. For most of the directories/modules 
 you will find either a factory or a factory method to conveniently create concrete instances.
-Most of them are also written with reasonable default values. The following code e.g. 
-comfortably instantiates a SimpleTokenizer ready to use.
-```python
-from bert4rec import tokenizers
+Most of them are also written with reasonable default values. The factory methods are inspired
+by the TensorFlow framework and work similarly. Every factory method accepts a string identifier 
+and returns the respective class. Each factory method may also be given a `**kwargs` dict with
+keyword arguments to further customize the instantiation of the respective class. Some 
+factory methods may also accept objects that are instances of the represented base class. 
+In this case the given object is simply returned. This is important for comfortable integration 
+into other classes and is also inspired by TensorFlow. Of course, all the classes may also
+be imported and instantiated directly without using the factory method.
 
+The following code shows exemplary how to use all available factory methods.
+```python
+import pathlib
+
+from bert4rec import dataloaders, evaluation, models, tokenizers, trainers
+from bert4rec.dataloaders import samplers
+from bert4rec.evaluation import evaluation_metrics
+from bert4rec.models.components import networks
+from bert4rec.trainers import optimizers
+
+# DATALOADERS
+# 1.1 get dataloader factory with default value
+dataloader_factory = dataloaders.get_dataloader_factory()
+# 1.2 choose specific dataloader factory
+dataloader_factory_2 = dataloaders.get_dataloader_factory("bert4rec")
+# 2.1 create dataloader with default values
+dataloader = dataloader_factory.create_ml_1m_dataloader()
+# 2.2 create dataloader with custom values
+dataloader_config = {
+  "max_seq_len": 256,
+  "max_predictions_per_seq": 50,
+  "masked_lm_prob": 0.15,
+  "input_duplication_factor": 10,
+  "tokenizer": "simple",
+  # ... more values available
+}
+dataloader_2 = dataloader_factory_2.create_ml_1m_dataloader(**dataloader_config)
+
+# SAMPLERS
+# 1. default
+sampler = samplers.get()
+# 2. choose a specific sampler
+sampler2 = samplers.get("popular")
+# 3. create sampler with custom values
+sampler_config = {
+  "source": [],
+  "sample_size": 15,
+  "allow_duplicates": False,
+  "seed": 3
+}
+sampler3 = samplers.get("random", **sampler_config)
+
+# EVALUATORS
+# 1. default
+evaluator = evaluation.get()
+# 2. choose a specific evaluator
+evaluator2 = evaluation.get("bert4rec")
+# 3. create evaluator with custom values
+evaluator_config = {
+  "metrics": [
+    evaluation_metrics.HR(5),
+    evaluation_metrics.NDCG(15),
+    evaluation_metrics.Counter(),
+    evaluation_metrics.MAP(),
+  ],
+  "sampler": sampler2,
+  "dataloader": dataloader
+}
+evaluator3 = tokenizers.get("bert4rec", **evaluator_config)
+
+# TOKENIZERS
+# 1. default
 tokenizer = tokenizers.get()
+# 2. choose a specific tokenizer
+tokenizer2 = tokenizers.get("simple")
+# 3. create tokenizer with custom values
+tokenizer_config = {
+  "vocab_file_path": pathlib.Path("some/path"),
+  "extensible": False
+}
+tokenizer3 = tokenizers.get("simple", **tokenizer_config)
+
+# TRAINERS
+# A model has to always be given to instantiate the trainer
+encoder = networks.BertEncoder(200)
+model = models.BERTModel(encoder)
+trainer_config = {
+  "model": model
+}
+# 1. default
+trainer = trainers.get(**trainer_config)
+# 2. choose a specific trainer
+trainer2 = trainers.get("bert4rec", **trainer_config)
+
+# OPTIMIZERS
+# 1. default
+optimizer = optimizers.get()
+# 2. choose a specific tokenizer
+optimizer2 = optimizers.get("adamw")
+# 3. create tokenizer with custom values
+optimizer_config = {
+  "init_lr": 5e-5,
+  "num_warmup_steps": 0,
+  "weight_decay_rate": 5e-3,
+  "epsilon": 1e-7,
+  # ... more values available
+}
+optimizer3 = optimizers.get("adamw", **optimizer_config)
+
 ```
 For development purposes this project uses [pylint](https://pypi.org/project/pylint/) and 
 [coverage](https://pypi.org/project/coverage/). These two python dependencies can also be run 
