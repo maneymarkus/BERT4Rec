@@ -53,7 +53,7 @@ class RandomSamplerTests(tf.test.TestCase):
 
         # initialize sampler with initial values
         sampler_config = {
-            "ds": ds,
+            "source": ds,
             "sample_size": 20
         }
         self.sampler = samplers.get("random", **sampler_config)

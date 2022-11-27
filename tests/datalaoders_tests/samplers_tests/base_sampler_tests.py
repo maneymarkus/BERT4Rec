@@ -16,7 +16,9 @@ class BaseSamplerTests(tf.test.TestCase):
         sampler1 = samplers.get("random")
         self.assertIsInstance(sampler1, samplers.RandomSampler)
         sampler2 = samplers.get()
-        self.assertIsInstance(sampler2, samplers.RandomSampler)
+        self.assertIsInstance(sampler2, samplers.PopularSampler)
+        sampler3 = samplers.get("popular")
+        self.assertIsInstance(sampler3, samplers.PopularSampler)
         with self.assertRaises(ValueError):
             samplers.get("slkfha")
 

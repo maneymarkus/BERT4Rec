@@ -54,7 +54,7 @@ class PopularSamplerTests(tf.test.TestCase):
 
         # initialize sampler with initial values
         sampler_config = {
-            "ds": ds,
+            "source": ds,
             "sample_size": 5
         }
         self.sampler = samplers.get("popular", **sampler_config)
