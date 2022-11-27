@@ -1,8 +1,9 @@
+from absl import logging
 import tensorflow as tf
 import tqdm
+from typing import Union
 
-from bert4rec.dataloaders import BaseDataloader
-from bert4rec.evaluation import evaluation_utils as utils
+from bert4rec.dataloaders import BaseDataloader, samplers
 from bert4rec.evaluation.base_evaluator import BaseEvaluator
 from bert4rec.evaluation.evaluation_metrics import *
 from bert4rec.models import BERT4RecModelWrapper
@@ -21,39 +22,53 @@ bert4rec_evaluation_metrics = [
 
 
 class BERT4RecEvaluator(BaseEvaluator):
-    def __init__(self, metrics: list[EvaluationMetric] = None, sample_popular: bool = True):
+    def __init__(self,
+                 metrics: list[EvaluationMetric] = None,
+                 sampler: Union[str, samplers.BaseSampler] = "popular",
+                 dataloader: BaseDataloader = None):
         if metrics is None:
             metrics = bert4rec_evaluation_metrics
-        super().__init__(metrics, sample_popular)
+        if isinstance(sampler, str):
+            sampler_config = {
+                "sample_size": 100
+            }
+            sampler = samplers.get(sampler, **sampler_config)
+        super().__init__(metrics, sampler, dataloader)
 
     def evaluate(self, wrapper: BERT4RecModelWrapper,
                  test_data: tf.data.Dataset,
-                 dataloader: BaseDataloader = None,
-                 popular_items_ranking: list[int] = None) -> list[EvaluationMetric]:
+                 tokenized_ds_item_list: list[int] = None) -> list[EvaluationMetric]:
 
-        if self.sample_popular and popular_items_ranking is None and dataloader is None:
-            raise ValueError(f"Either one of the `dataloader` parameter or the `popular_item_ranking` argument "
-                             f"has to be given if the sample_popular parameter is set to True.")
+        if tokenized_ds_item_list is None and self.dataloader is None:
+            raise ValueError(f"The evaluator has to be either initialized with a dataloader or "
+                             f"the tokenized_ds_item_list argument has to be given to use and apply "
+                             f"ranking evaluation metrics")
 
-        if popular_items_ranking is None:
-            popular_items_ranking = dataloader.create_popular_item_ranking_tokenized()
+        if tokenized_ds_item_list is None:
+            tokenized_ds_item_list = self.dataloader.create_item_list_tokenized()
 
         # iterate over the available batches
         for batch in tqdm.tqdm(test_data):
-            self.evaluate_batch(wrapper, batch, popular_items_ranking)
+            self.evaluate_batch(wrapper, batch, tokenized_ds_item_list)
 
         return self._metrics
 
-    def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict, pop_rank_items: list):
+    def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict, tokenized_item_list: list):
         """
-        Evaluation code taken from
+        Evaluation code inspired from
         https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run.py#L176
 
         :param wrapper:
         :param test_batch:
-        :param pop_rank_items:
+        :param tokenized_item_list:
         :return:
         """
+        sample_padding = 5
+        if self.sampler.sample_size < len(tokenized_item_list) + sample_padding:
+            logging.info("The sample size of the sampler is smaller than the given item list "
+                         "(plus a small padding). Therefore sampling the dataset/item list will "
+                         "probably simply return the whole given dataset/item list.")
+
         rank_item_lists_batch = []
         ground_truth_items_batch = []
         selected_mlm_positions_batch = []
@@ -76,16 +91,10 @@ class BERT4RecEvaluator(BaseEvaluator):
                 # negative sampling
                 # remove all items from the list of items to be ranked that the user has already interacted with
                 remove_items = test_batch["labels"][t_i].numpy().tolist()
-                user_rank_items = utils.remove_elements_from_list(pop_rank_items, remove_items)
                 ground_truth = selected_mlm_ids[i].numpy()
 
-                # actual sampling "algorithm"
-                if self.sample_popular:
-                    sampled_rank_items = user_rank_items[:100]
-                # random sampling
-                else:
-                    # first shuffle the sorted rank_items list
-                    sampled_rank_items = utils.sample_random_items_from_list(pop_rank_items, 100)
+                # sample items to rank
+                sampled_rank_items = self.sampler.sample(tokenized_item_list, without=remove_items)
 
                 # append ground truth item id (since this is the one we actually want to rank)
                 sampled_rank_items.append(ground_truth)

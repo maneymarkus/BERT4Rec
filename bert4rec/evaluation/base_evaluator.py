@@ -1,17 +1,37 @@
 import abc
+from absl import logging
 import json
 import pathlib
 import tensorflow as tf
+from typing import Union
 
-from bert4rec.dataloaders import BaseDataloader
+from bert4rec.dataloaders import BaseDataloader, samplers
 from bert4rec.evaluation.evaluation_metrics import EvaluationMetric
 from bert4rec.models import BERT4RecModelWrapper
 
 
 class BaseEvaluator(abc.ABC):
-    def __init__(self, metrics: list[EvaluationMetric], sample_popular: bool = True):
-        self.sample_popular = sample_popular
+    def __init__(self,
+                 metrics: list[EvaluationMetric],
+                 sampler: Union[str, samplers.BaseSampler] = "popular",
+                 dataloader: BaseDataloader = None):
+        self.sampler = samplers.get(sampler)
+
+        if self.sampler.sample_size is None:
+            logging.warning(f"The sampler used in the evaluator {self} does not have a sample size "
+                            "set. This might lead to problems during evaluation.")
+
+        if self.sampler.source is None:
+            logging.info(f"The sampler used in the evaluator {self} does not have a source set. "
+                         "To execute evaluation make sure to either set a source when initializing "
+                         "the sampler or provide a source list when calling the evaluate() method "
+                         "of the evaluator.")
+
+        if dataloader is not None:
+            self.sampler.set_source(dataloader.create_item_list_tokenized())
+
         self._metrics = metrics
+        self.dataloader = dataloader
         self.reset_metrics()
 
     def reset_metrics(self) -> None:
@@ -19,7 +39,9 @@ class BaseEvaluator(abc.ABC):
             metric.reset()
 
     @abc.abstractmethod
-    def evaluate(self, wrapper: BERT4RecModelWrapper, test_data: tf.data.Dataset, dataloader: BaseDataloader) \
+    def evaluate(self, wrapper: BERT4RecModelWrapper,
+                 test_data: tf.data.Dataset,
+                 tokenized_ds_item_list: list[int] = None) \
             -> list[EvaluationMetric]:
         """
         Evaluates a given model on the given test_data. The dataloader provides the method
@@ -27,7 +49,7 @@ class BaseEvaluator(abc.ABC):
 
         :param wrapper:
         :param test_data:
-        :param dataloader:
+        :param tokenized_ds_item_list:
         :return: dict containing the results of the metrics
         """
         pass

@@ -49,7 +49,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
                                          for _ in range(200)]))
 
         metric_objects = self.evaluator.evaluate(
-            model_wrapper, prepared_batches, popular_items_ranking=random_popular_items
+            model_wrapper, prepared_batches, tokenized_ds_item_list=random_popular_items
         )
 
         metrics = self.evaluator.get_metrics_results()
@@ -86,7 +86,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
                                          for _ in range(200)]))
 
         metrics = self.evaluator.evaluate(
-            model_wrapper, prepared_batches, popular_items_ranking=random_popular_items
+            model_wrapper, prepared_batches, tokenized_ds_item_list=random_popular_items
         )
 
         for i, metric in enumerate(metrics):
