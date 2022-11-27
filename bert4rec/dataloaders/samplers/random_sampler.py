@@ -5,20 +5,20 @@ from .base_sampler import BaseSampler
 
 class RandomSampler(BaseSampler):
     def __init__(self,
-                 ds: list = None,
+                 source: list = None,
                  sample_size: int = None,
                  allow_duplicates: bool = True,
                  seed: int = None):
-        super().__init__(ds, sample_size)
+        super().__init__(source, sample_size)
         self.allow_duplicates = allow_duplicates
         self.seed = seed
 
     def _get_parameters(self,
-                        ds: list = None,
+                        source: list = None,
                         sample_size: int = None,
                         allow_duplicates: bool = True,
                         seed: int = None):
-        ds, sample_size = super()._get_parameters(ds, sample_size)
+        source, sample_size = super()._get_parameters(source, sample_size)
 
         if seed is None:
             seed = self.seed
@@ -31,18 +31,18 @@ class RandomSampler(BaseSampler):
                                  "initialization of the sampler or as an argument in the "
                                  "function call.")
 
-        return ds, sample_size, allow_duplicates
+        return source, sample_size, allow_duplicates
 
     def sample(self,
-               ds: list = None,
+               source: list = None,
                sample_size: int = None,
                allow_duplicates: bool = True,
                seed: int = None,
                without: list = None) -> list:
-        ds, sample_size, allow_duplicates = \
-            self._get_parameters(ds, sample_size, allow_duplicates, seed)
+        source, sample_size, allow_duplicates = \
+            self._get_parameters(source, sample_size, allow_duplicates, seed)
 
-        _ds = ds.copy()
+        _ds = source.copy()
         random.shuffle(_ds)
         # remove duplicates by converting to set and then back to list
         if not allow_duplicates:

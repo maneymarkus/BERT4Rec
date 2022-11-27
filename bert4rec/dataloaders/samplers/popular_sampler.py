@@ -5,26 +5,22 @@ from bert4rec.dataloaders import dataloader_utils
 
 class PopularSampler(BaseSampler):
     def __init__(self,
-                 ds: list = None,
-                 sample_size: int = None,
-                 allow_duplicates: bool = True,
-                 seed: int = None):
-        super().__init__(ds, sample_size)
-        self.allow_duplicates = allow_duplicates
-        self.seed = seed
+                 source: list = None,
+                 sample_size: int = None):
+        super().__init__(source, sample_size)
 
     def sample(self,
-               ds: list = None,
+               source: list = None,
                sample_size: int = None,
                without: list = None) -> list:
-        ds, sample_size = self._get_parameters(ds, sample_size)
+        source, sample_size = self._get_parameters(source, sample_size)
 
-        _ds = ds.copy()
+        _source = source.copy()
 
         # remove elements from without from source
         if without is not None:
-            _ds = [i for i in _ds if i not in without]
+            _source = [i for i in _source if i not in without]
 
-        _ds = dataloader_utils.rank_items_by_popularity(_ds)
+        _source = dataloader_utils.rank_items_by_popularity(_source)
 
-        return _ds[:sample_size]
+        return _source[:sample_size]
