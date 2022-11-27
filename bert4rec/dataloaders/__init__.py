@@ -2,24 +2,23 @@ import abc
 
 from .dataloader_utils import *
 from .base_dataloader import BaseDataloader
-from .bert4rec_dataloaders import *
+from .bert4rec_dataloaders import BERT4RecDataloader
+from .bert4rec_ml1m_dataloader import BERT4RecML1MDataloader
+from .bert4rec_ml20m_dataloader import BERT4RecML20MDataloader
+from .bert4rec_reddit_dataloader import BERT4RecRedditDataloader
 
 
 class BaseDataloaderFactory(abc.ABC):
     @abc.abstractmethod
-    def create_ml_1m_dataloader(self) -> BaseDataloader:
+    def create_ml_1m_dataloader(self, **kwargs) -> BaseDataloader:
         pass
 
     @abc.abstractmethod
-    def create_ml_20m_dataloader(self) -> BaseDataloader:
+    def create_ml_20m_dataloader(self, **kwargs) -> BaseDataloader:
         pass
 
     @abc.abstractmethod
-    def create_reddit_dataloader(self) -> BaseDataloader:
-        pass
-
-    @abc.abstractmethod
-    def create_imdb_dataloader(self) -> BaseDataloader:
+    def create_reddit_dataloader(self, **kwargs) -> BaseDataloader:
         pass
 
 
@@ -36,9 +35,6 @@ class BERT4RecDataloaderFactory(BaseDataloaderFactory):
 
     def create_reddit_dataloader(self, **kwargs) -> BERT4RecDataloader:
         return BERT4RecRedditDataloader(**kwargs)
-
-    def create_imdb_dataloader(self, **kwargs) -> BERT4RecDataloader:
-        return BERT4RecIMDBDataloader(**kwargs)
 
 
 def get_dataloader_factory(identifier: str = "bert4rec") -> BaseDataloaderFactory:

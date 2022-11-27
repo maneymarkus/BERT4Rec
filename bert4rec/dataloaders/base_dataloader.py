@@ -1,12 +1,14 @@
 import abc
 import tensorflow as tf
+from typing import Union
 
-from bert4rec.tokenizers.base_tokenizer import BaseTokenizer
+from bert4rec import tokenizers
+from bert4rec.dataloaders import dataloader_utils as utils
 
 
 class BaseDataloader(abc.ABC):
-    def __init__(self, tokenizer: BaseTokenizer = None):
-        self.tokenizer = tokenizer
+    def __init__(self, tokenizer: Union[str, tokenizers.BaseTokenizer] = None):
+        self.tokenizer = tokenizers.get(tokenizer)
 
     def get_tokenizer(self):
         return self.tokenizer
@@ -72,8 +74,16 @@ class BaseDataloader(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def create_popular_item_ranking(self) -> list:
+    def create_item_list(self) -> list:
         pass
+
+    def create_item_list_tokenized(self) -> list:
+        item_list = self.create_item_list()
+        return self.tokenizer.tokenize(item_list)
+
+    def create_popular_item_ranking(self) -> list:
+        item_list = self.create_item_list()
+        return utils.rank_items_by_popularity(item_list)
 
     def create_popular_item_ranking_tokenized(self) -> list:
         sorted_item_list = self.create_popular_item_ranking()
