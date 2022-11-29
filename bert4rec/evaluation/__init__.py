@@ -8,7 +8,7 @@ evaluators_map = {
 }
 
 
-def get(identifier: str = "bert4rec", **kwargs):
+def get(identifier: str = "bert4rec", **kwargs) -> BaseEvaluator:
     """
     Factory method to return a concrete evaluator instance according to the given identifier
 

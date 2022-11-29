@@ -1,3 +1,4 @@
+from bert4rec.trainers.base_trainer import BaseTrainer
 from bert4rec.trainers.bert4rec_trainer import BERT4RecTrainer
 
 
@@ -6,7 +7,7 @@ trainers_map = {
 }
 
 
-def get(identifier: str = "bert4rec", **kwargs):
+def get(identifier: str = "bert4rec", **kwargs) -> BaseTrainer:
     """
     Factory method to return a concrete trainer instance according to the given identifier
 

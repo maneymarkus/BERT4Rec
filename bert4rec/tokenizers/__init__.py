@@ -9,7 +9,7 @@ tokenizers_map = {
 }
 
 
-def get(identifier: Union[str, BaseTokenizer] = "simple", **kwargs):
+def get(identifier: Union[str, BaseTokenizer] = "simple", **kwargs) -> BaseTokenizer:
     """
     Factory method to return a concrete tokenizer instance according to the given identifier
 
