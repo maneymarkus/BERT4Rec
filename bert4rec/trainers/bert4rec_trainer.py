@@ -8,7 +8,7 @@ from bert4rec.trainers import optimizers, trainer_utils
 
 class BERT4RecTrainer(BaseTrainer):
     def __init__(self, model: tf.keras.Model):
-        super(BERT4RecTrainer, self).__init__(model)
+        super().__init__(model)
         
     def initialize_model(self,
                          optimizer: tf.keras.optimizers.Optimizer = None,
@@ -53,6 +53,8 @@ class BERT4RecTrainer(BaseTrainer):
                 status.assert_existing_objects_matched()
                 # disabled as properly reloading the optimizer does not work yet unfortunately
                 #status.assert_consumed()
+
+        logging.info("Start training")
 
         history = self.model.fit(x=train_ds,
                                  validation_data=val_ds,

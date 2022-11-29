@@ -1,6 +1,9 @@
 import abc
+import datetime
 import pathlib
 import tensorflow as tf
+
+from bert4rec.dataloaders.base_dataloader import BaseDataloader
 
 
 class BaseTrainer(abc.ABC):
@@ -31,6 +34,12 @@ class BaseTrainer(abc.ABC):
               checkpoint_path: pathlib.Path = None,
               epochs: int = 50):
         pass
+
+    def update_wrapper_meta_info(self, wrapper, dataloader: BaseDataloader):
+        wrapper.update_meta({
+            "last_trained": datetime.datetime.now(),
+            "trained_on_dataset": dataloader.dataset_identifier
+        })
 
     @abc.abstractmethod
     def validate(self):
