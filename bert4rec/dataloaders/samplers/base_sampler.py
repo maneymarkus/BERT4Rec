@@ -1,4 +1,5 @@
 import abc
+from absl import logging
 
 
 class BaseSampler(abc.ABC):
@@ -10,6 +11,10 @@ class BaseSampler(abc.ABC):
             source = source.copy()
         self.source = source
         self.sample_size = sample_size
+        if self.source is not None and self.sample_size is not None \
+                and len(self.source) <= self.sample_size:
+            logging.info("Be aware that the sample_size is equal to or even bigger than the "
+                         "given source list probably resulting in the whole source being returned.")
 
     def _get_parameters(self,
                         source: list = None,
@@ -29,6 +34,12 @@ class BaseSampler(abc.ABC):
         if sample_size < 0:
             raise ValueError("The sample size shouldn't be negative to avoid unexpected outputs "
                              f"(Given: {sample_size})")
+
+        if sample_size >= len(source):
+            logging.info(f"Be aware that the given sample_size ({sample_size}) is equal to or "
+                         f"even bigger than the given source (len: {len(source)}), so the "
+                         f"whole source is simply returned (except maybe elements that should be "
+                         f"removed.")
 
         return source, sample_size
 
