@@ -83,24 +83,26 @@ class BaseTokenizer(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def tokenize(self, input):
+    def tokenize(self, input, progress_bar: bool = False):
         """
         Convert (virtually any) input to a tokenizer-specific token.
         To support multiple input types, this method may call specific private methods
         like `_tokenize_string(string)` to tokenize specific input.
 
         :param input: To be converted
+        :param progress_bar: May enable tqdm progress bar
         :return: Token (may be other string or integer)
         """
         pass
 
     @abc.abstractmethod
-    def detokenize(self, token, drop_tokens: list[str] = None):
+    def detokenize(self, token, drop_tokens: list[str] = None, progress_bar: bool = False):
         """
         Return the corresponding string the given `token` represents
 
         :param token: Should be converted back to original value
         :param drop_tokens: A list of the string representation of the tokens that should be dropped on conversion
+        :param progress_bar: May enable tqdm progress bar
         :return: Corresponding (original) value
         """
         pass

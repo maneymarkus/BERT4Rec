@@ -4,6 +4,7 @@ import pandas as pd
 import pathlib
 import tensorflow as tf
 from tensorflow.python.framework.ops import Tensor, EagerTensor
+import tqdm
 from typing import Union
 
 import bert4rec.tokenizers.base_tokenizer as base_tokenizer
@@ -40,7 +41,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         self._vocab = list()
         self._vocab_size = 0
 
-    def tokenize(self, input) -> Union[int, list[int], tf.RaggedTensor]:
+    def tokenize(self, input, progress_bar: bool = False) -> Union[int, list[int], tf.RaggedTensor]:
         """
         This method tokenizes given input of different supported types and returns a tokenized string, list or
         dataframe column
@@ -56,14 +57,15 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         elif isinstance(input, pd.Series):
             tokenized = self._tokenize_df_column(input)
         elif isinstance(input, Iterable):
-            tokenized = self._tokenize_iterable(input)
+            tokenized = self._tokenize_iterable(input, progress_bar)
         else:
             raise ValueError("The provided argument is not of a supported type")
         return tokenized
 
     def detokenize(self,
                    token,
-                   drop_tokens: list[str] = None) -> Union[int, list, pd.Series, tf.RaggedTensor]:
+                   drop_tokens: list[str] = None,
+                   progress_bar: bool = False) -> Union[int, list, pd.Series, tf.RaggedTensor]:
         """
         This method converts from tokens back to strings and returns either a detokenized string, list or
         dataframe column
@@ -76,7 +78,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         elif isinstance(token, pd.Series):
             value = self._detokenize_df_column(token, drop_tokens)
         elif isinstance(token, Iterable):
-            value = self._detokenize_iterable(token, drop_tokens)
+            value = self._detokenize_iterable(token, drop_tokens, progress_bar)
         else:
             raise ValueError("The provided argument is not of a supported type")
         return value
@@ -109,7 +111,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
 
         return token
 
-    def _tokenize_iterable(self, iterable: Iterable) -> list[int]:
+    def _tokenize_iterable(self, iterable: Iterable, progress_bar: bool = False) -> list[int]:
         """
         Convert a list of values to a list of representing tokens
 
@@ -117,7 +119,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         :return: List of tokens
         """
         tokenized = list()
-        for token in iterable:
+        for token in (tqdm.tqdm(iterable) if progress_bar else iterable):
             tokenized.append(self.tokenize(token))
         return tokenized
 
@@ -148,9 +150,12 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
             value = None
         return value
 
-    def _detokenize_iterable(self, tokens: Iterable[int], drop_tokens: list[str] = None) -> list:
+    def _detokenize_iterable(self,
+                             tokens: Iterable[int],
+                             drop_tokens: list[str] = None,
+                             progress_bar: bool = False) -> list:
         values = list()
-        for t in tokens:
+        for t in (tqdm.tqdm(tokens) if progress_bar else tokens):
             value = self.detokenize(t, drop_tokens)
             if value is not None:
                 values.append(value)
