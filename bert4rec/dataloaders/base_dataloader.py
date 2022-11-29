@@ -1,4 +1,5 @@
 import abc
+from absl import logging
 import tensorflow as tf
 from typing import Union
 
@@ -78,8 +79,10 @@ class BaseDataloader(abc.ABC):
         pass
 
     def create_item_list_tokenized(self) -> list:
+        logging.info("Create dataset item list")
         item_list = self.create_item_list()
-        return self.tokenizer.tokenize(item_list)
+        logging.info(f"Start tokenizing dataloader item list (len: {len(item_list)})")
+        return self.tokenizer.tokenize(item_list, progress_bar=True)
 
     def create_popular_item_ranking(self) -> list:
         item_list = self.create_item_list()
