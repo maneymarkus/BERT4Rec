@@ -5,9 +5,10 @@ import pathlib
 import tensorflow as tf
 from typing import Union
 
-from bert4rec.dataloaders import BaseDataloader, samplers
+from bert4rec.dataloaders.base_dataloader import BaseDataloader
+from bert4rec.dataloaders import samplers
 from bert4rec.evaluation.evaluation_metrics import EvaluationMetric
-from bert4rec.models import BERT4RecModelWrapper
+from bert4rec.models.model_wrapper import ModelWrapper
 
 
 class BaseEvaluator(abc.ABC):
@@ -39,7 +40,7 @@ class BaseEvaluator(abc.ABC):
             metric.reset()
 
     @abc.abstractmethod
-    def evaluate(self, wrapper: BERT4RecModelWrapper,
+    def evaluate(self, wrapper: ModelWrapper,
                  test_data: tf.data.Dataset,
                  tokenized_ds_item_list: list[int] = None) \
             -> list[EvaluationMetric]:

@@ -44,16 +44,13 @@ class BERT4RecEvaluator(BaseEvaluator):
                              f"the tokenized_ds_item_list argument has to be given to use and apply "
                              f"ranking evaluation metrics")
 
-        if tokenized_ds_item_list is None:
-            tokenized_ds_item_list = self.dataloader.create_item_list_tokenized()
-
         # iterate over the available batches
-        for batch in tqdm.tqdm(test_data):
+        for batch in tqdm.tqdm(test_data, total=test_data.cardinality().numpy()):
             self.evaluate_batch(wrapper, batch, tokenized_ds_item_list)
 
         return self._metrics
 
-    def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict, tokenized_item_list: list):
+    def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict, tokenized_item_list: list = None):
         """
         Evaluation code inspired from
         https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run.py#L176
@@ -63,11 +60,6 @@ class BERT4RecEvaluator(BaseEvaluator):
         :param tokenized_item_list:
         :return:
         """
-        sample_padding = 5
-        if self.sampler.sample_size < len(tokenized_item_list) + sample_padding:
-            logging.info("The sample size of the sampler is smaller than the given item list "
-                         "(plus a small padding). Therefore sampling the dataset/item list will "
-                         "probably simply return the whole given dataset/item list.")
 
         rank_item_lists_batch = []
         ground_truth_items_batch = []
