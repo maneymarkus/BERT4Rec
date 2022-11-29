@@ -2,7 +2,7 @@ import abc
 
 from .dataloader_utils import *
 from .base_dataloader import BaseDataloader
-from .bert4rec_dataloaders import BERT4RecDataloader
+from .bert4rec_dataloader import BERT4RecDataloader
 from .bert4rec_ml1m_dataloader import BERT4RecML1MDataloader
 from .bert4rec_ml20m_dataloader import BERT4RecML20MDataloader
 from .bert4rec_reddit_dataloader import BERT4RecRedditDataloader

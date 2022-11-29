@@ -1,17 +1,13 @@
 from absl import logging
 import copy
 import functools
-import pandas as pd
 import random
-import string
 import tensorflow as tf
 from typing import Union
 
 from bert4rec.dataloaders import BaseDataloader
 from bert4rec import tokenizers
 import bert4rec.dataloaders.dataloader_utils as utils
-import datasets.ml_20m as ml_20m
-import datasets.reddit as reddit
 
 
 class BERT4RecDataloader(BaseDataloader):
@@ -52,8 +48,9 @@ class BERT4RecDataloader(BaseDataloader):
         self.random_token_rate = random_token_rate
         self.input_duplication_factor = input_duplication_factor
 
+    @property
     def dataset_identifier(self):
-        pass
+        return ""
 
     def load_data_into_ds(self) -> tf.data.Dataset:
         pass
