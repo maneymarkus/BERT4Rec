@@ -1,14 +1,9 @@
 from absl import logging
 import pathlib
-import tensorflow as tf
 
 from bert4rec.dataloaders import get_dataloader_factory, dataloader_utils
 from bert4rec.evaluation import BERT4RecEvaluator
-from bert4rec.models.components import networks
-from bert4rec.models import BERTModel, BERT4RecModelWrapper, model_utils
-from bert4rec import trainers
-from bert4rec.trainers import optimizers
-import bert4rec.utils as utils
+from bert4rec.models import BERT4RecModelWrapper, model_utils
 
 
 def main():
@@ -17,7 +12,7 @@ def main():
     # set logging to most verbose level
     logging.set_verbosity(logging.DEBUG)
 
-    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m_with_adamw"))
+    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m"))
 
     loaded_assets = BERT4RecModelWrapper.load(save_path)
     loaded_wrapper = loaded_assets["model_wrapper"]
@@ -32,11 +27,11 @@ def main():
     dataloader.generate_vocab()
     train_ds, val_ds, test_ds = dataloader.prepare_training()
 
-    test_batches = dataloader_utils.make_batches(test_ds)
+    test_batches = dataloader_utils.make_batches(test_ds, batch_size=256)
 
-    evaluator = BERT4RecEvaluator()
+    evaluator = BERT4RecEvaluator(dataloader=dataloader)
 
-    metrics_objects = evaluator.evaluate(loaded_wrapper, test_batches, dataloader)
+    metrics_objects = evaluator.evaluate(loaded_wrapper, test_batches)
     #evaluator.save_results(save_path)
     metrics = evaluator.get_metrics_results()
     print(metrics)

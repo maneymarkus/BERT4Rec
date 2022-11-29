@@ -42,9 +42,9 @@ def main():
     # do short training to build compiled metrics (necessary for saving)
     model.fit(train_batches)
 
-    evaluator = BERT4RecEvaluator()
+    evaluator = BERT4RecEvaluator(dataloader=dataloader)
 
-    evaluator.evaluate(model_wrapper, test_batches, dataloader)
+    evaluator.evaluate(model_wrapper, test_batches)
     print(evaluator.get_metrics_results())
 
     save_path = pathlib.Path("example_save_model")
@@ -55,7 +55,7 @@ def main():
 
     evaluator.reset_metrics()
 
-    evaluator.evaluate(reloaded_model_wrapper, test_batches, dataloader)
+    evaluator.evaluate(reloaded_model_wrapper, test_batches)
     print(evaluator.get_metrics_results())
 
 
