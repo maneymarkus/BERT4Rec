@@ -1,6 +1,7 @@
 from .base_sampler import BaseSampler
 
 from bert4rec.dataloaders import dataloader_utils
+from bert4rec.evaluation import evaluation_utils
 
 
 class PopularSampler(BaseSampler):
@@ -8,6 +9,9 @@ class PopularSampler(BaseSampler):
                  source: list = None,
                  sample_size: int = None):
         super().__init__(source, sample_size)
+        # already rank source list for performance
+        if self.source is not None:
+            self.source = dataloader_utils.rank_items_by_popularity(self.source)
 
     def sample(self,
                source: list = None,
@@ -21,6 +25,13 @@ class PopularSampler(BaseSampler):
         if without is not None:
             _source = [i for i in _source if i not in without]
 
-        _source = dataloader_utils.rank_items_by_popularity(_source)
+        # source list only has to be ranked if the sampler wasn't initialized with it or
+        # the source was not set via the setter method
+        if self.source is None:
+            _source = dataloader_utils.rank_items_by_popularity(_source)
 
         return _source[:sample_size]
+
+    def set_source(self, source: list):
+        super().set_source(source)
+        self.source = dataloader_utils.rank_items_by_popularity(self.source)
