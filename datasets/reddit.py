@@ -1,6 +1,6 @@
 """
-This class provides the MovieLens 1M Dataset.
-See: https://grouplens.org/datasets/movielens/1m/
+This file provides the Reddit Dataset.
+See: https://files.pushshift.io/reddit/
 """
 from absl import logging
 import io

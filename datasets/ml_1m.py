@@ -1,9 +1,9 @@
 """
-This class provides the MovieLens 1M Dataset.
+This class provides the MovieLens 1M Dataset referenced in the BERT4Rec paper.
+(https://arxiv.org/abs/1904.06690)
 See: https://grouplens.org/datasets/movielens/1m/
 """
 from absl import logging
-import numpy as np
 import pandas as pd
 import tqdm
 

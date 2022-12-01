@@ -1,6 +1,7 @@
 """
-This class provides the MovieLens 1M Dataset.
-See: https://grouplens.org/datasets/movielens/1m/
+This file provides the MovieLens 20M Dataset referenced in the BERT4Rec paper.
+(https://arxiv.org/abs/1904.06690)
+See: https://grouplens.org/datasets/movielens/20m/
 """
 from absl import logging
 import pandas as pd
