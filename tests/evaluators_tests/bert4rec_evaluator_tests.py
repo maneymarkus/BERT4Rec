@@ -5,6 +5,7 @@ import tensorflow as tf
 
 from bert4rec.dataloaders import dataloader_utils
 import bert4rec.evaluation as evaluation
+from bert4rec.evaluation import evaluation_metrics
 from bert4rec.models import BERTModel, BERT4RecModelWrapper
 from bert4rec.models.components import networks
 import bert4rec.utils as utils
@@ -69,6 +70,14 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
     def test_reset_metrics(self):
         ds_size = 100
         max_seq_len = 5
+
+        metrics = [
+            evaluation_metrics.Counter(),
+            evaluation_metrics.HR(100),
+            evaluation_metrics.NDCG(100)
+        ]
+
+        self.evaluator = evaluation.get(**{"metrics": metrics})
 
         prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
         prepared_batches = dataloader_utils.make_batches(prepared_ds, batch_size=5)
