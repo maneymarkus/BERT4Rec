@@ -46,7 +46,7 @@ def is_available(path: pathlib.Path, expected_size: int) -> bool:
     if not path.exists():
         return False
     path_size = get_byte_size(path)
-    if path_size * 0.95 < expected_size < path_size * 1.05:
+    if path_size * 0.98 < expected_size < path_size * 1.02:
         return True
     return False
 
