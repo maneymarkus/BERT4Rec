@@ -37,7 +37,7 @@ class BaseTrainer(abc.ABC):
 
     def update_wrapper_meta_info(self, wrapper, dataloader: BaseDataloader):
         wrapper.update_meta({
-            "last_trained": datetime.datetime.now(),
+            "last_trained": str(datetime.datetime.now()),
             "trained_on_dataset": dataloader.dataset_identifier
         })
 
