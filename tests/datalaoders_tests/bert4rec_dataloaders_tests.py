@@ -139,8 +139,8 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         self.assertEqual(len(ds_item), 4,
                          "A random item from a BERT4Rec dataloader prepare_training() should be a dict with "
                          f"two values, but this one actually has: {len(ds_item)} values.")
-        dict_keys = ["labels", "input_word_ids", "input_mask", "input_type_ids"]
-        self.assertListEqual(list(ds_item.keys()), dict_keys)
+        dict_keys = {"labels", "input_word_ids", "input_mask", "input_type_ids"}
+        self.assertAllInSet(list(ds_item.keys()), dict_keys)
 
     def test_prepare_inference(self):
         if self.dataloader is None:
@@ -149,9 +149,9 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         sequence = test_utils.generate_random_word_list()
         model_input = self.dataloader.prepare_inference(sequence)
         self.assertIsInstance(model_input, dict)
-        dict_keys = ["labels", "input_word_ids", "input_mask", "input_type_ids",
-                     "masked_lm_ids", "masked_lm_positions", "masked_lm_weights"]
-        self.assertListEqual(list(model_input.keys()), dict_keys)
+        dict_keys = {"labels", "input_word_ids", "input_mask", "input_type_ids",
+                     "masked_lm_ids", "masked_lm_positions", "masked_lm_weights"}
+        self.assertAllInSet(list(model_input.keys()), dict_keys)
         input_word_ids = model_input["input_word_ids"]
         self.assertEqual(tf.rank(input_word_ids).numpy(), 2)
         self.assertEqual(len(input_word_ids[0]), self.dataloader._MAX_SEQ_LENGTH)
@@ -159,7 +159,7 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         self.assertEqual(last_item, self.dataloader._MASK_TOKEN_ID)
 
 
-class BERT4ML1MRecDataloaderTests(BERT4RecDataloaderTests):
+class BERT4RecML1MDataloaderTests(BERT4RecDataloaderTests):
     def setUp(self):
         super().setUp()
         self.dataloader = dataloaders.BERT4RecML1MDataloader()
@@ -190,24 +190,21 @@ class BERT4ML1MRecDataloaderTests(BERT4RecDataloaderTests):
         super().test_prepare_inference()
 
 
-class BERT4ML20MRecDataloaderTests(BERT4RecDataloaderTests):
+class BERT4RecML20MDataloaderTests(BERT4RecDataloaderTests):
     """
     NOTE: Be aware that especially these tests require a lot of computation time and power
-    as this dataset contains about 139.000 sequences
+    as this dataset contains about 139.000 rather long sequences
     """
     def setUp(self):
         super().setUp()
         self.dataloader = dataloaders.BERT4RecML20MDataloader()
         self.expected_vocab_size = 26733
 
-    def test_load_data_into_ds(self, ds: tf.data.Dataset = None):
-        super().test_load_data_into_ds(ds)
-
 
 """
 Not yet correctly implemented
 
-class BERT4RedditRecDataloaderTests(BERT4RecDataloaderTests):
+class BERT4RecRedditDataloaderTests(BERT4RecDataloaderTests):
     def setUp(self):
         super().setUp()
         self.dataloader = dataloaders.BERT4RecML1MDataloader()
@@ -215,6 +212,25 @@ class BERT4RedditRecDataloaderTests(BERT4RecDataloaderTests):
     def test_load_data_into_ds(self, ds: tf.data.Dataset = None):
         super().test_load_data_into_ds(ds)
 """
+
+
+class BERT4RecBeautyDataloaderTests(BERT4RecDataloaderTests):
+    def setUp(self):
+        super().setUp()
+        self.dataloader = dataloaders.BERT4RecBeautyDataloader()
+        self.expected_vocab_size = 54546
+
+
+class BERT4RecSteamDataloaderTests(BERT4RecDataloaderTests):
+    """
+    NOTE: Be aware that especially these tests require a lot of computation time and power
+    as this dataset contains about 281,000 sequences
+    """
+    def setUp(self):
+        super().setUp()
+        self.dataloader = dataloaders.BERT4RecSteamDataloader()
+        self.expected_vocab_size = 13048
+
 
 if __name__ == '__main__':
     tf.test.main()
