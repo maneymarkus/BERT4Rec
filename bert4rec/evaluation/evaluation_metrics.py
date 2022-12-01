@@ -81,7 +81,7 @@ class NormalizedDiscountedCumulativeGain(RatioEvaluationMetric):
             if rank == 1:
                 _add = 1
             else:
-                _add = 1 / np.log2(rank + 2)
+                _add = 1 / np.log2(rank + 1)
             self._nominator += _add
         super().update(rank)
 
