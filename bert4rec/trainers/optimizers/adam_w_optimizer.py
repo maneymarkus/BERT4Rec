@@ -64,7 +64,7 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
                  weight_decay_rate=0.0,
                  include_in_weight_decay=None,
                  exclude_from_weight_decay=None,
-                 gradient_clip_norm=1.0,
+                 gradient_clip_norm=5.0,
                  name='AdamWeightDecay',
                  **kwargs):
         super(AdamWeightDecay, self).__init__(learning_rate, beta_1, beta_2,
