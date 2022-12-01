@@ -19,9 +19,9 @@ class BaseTrainerTests(tf.test.TestCase):
         pass
 
     def test_trainer_factory_method(self):
-        trainer = trainers.get("bert4rec", **{"models": self.bert_model})
+        trainer = trainers.get("bert4rec", **{"model": self.bert_model})
         self.assertIsInstance(trainer, trainers.BERT4RecTrainer)
-        trainer2 = trainers.get(**{"models": self.bert_model})
+        trainer2 = trainers.get(**{"model": self.bert_model})
         self.assertIsInstance(trainer2, trainers.BERT4RecTrainer)
         with self.assertRaises(ValueError):
             trainers.get("alsdkjfhoiho")
