@@ -57,20 +57,20 @@ class EvaluationMetricsTests(tf.test.TestCase):
 
         self._update_metrics(ndcgs, self.ranks_1)
         self.assertEqual(ndcg1.result(), 0.2)
-        self.assertEqual(round(ndcg5.result(), 2), 0.53)
-        self.assertEqual(round(ndcg10.result(), 2), 0.53)
+        self.assertEqual(round(ndcg5.result(), 2), 0.59)
+        self.assertEqual(round(ndcg10.result(), 2), 0.59)
         self._reset_metrics(ndcgs)
 
         self._update_metrics(ndcgs, self.ranks_2)
         self.assertEqual(ndcg1.result(), 0.2)
-        self.assertEqual(round(ndcg5.result(), 2), 0.27)
-        self.assertEqual(round(ndcg10.result(), 2), 0.33)
+        self.assertEqual(round(ndcg5.result(), 2), 0.28)
+        self.assertEqual(round(ndcg10.result(), 2), 0.34)
         self._reset_metrics(ndcgs)
 
         self._update_metrics(ndcgs, self.ranks_3)
         self.assertEqual(ndcg1.result(), 0)
-        self.assertEqual(round(ndcg5.result(), 2), 0.22)
-        self.assertEqual(round(ndcg10.result(), 2), 0.28)
+        self.assertEqual(round(ndcg5.result(), 2), 0.26)
+        self.assertEqual(round(ndcg10.result(), 2), 0.33)
         self._reset_metrics(ndcgs)
 
     def test_mean_average_precision(self):
