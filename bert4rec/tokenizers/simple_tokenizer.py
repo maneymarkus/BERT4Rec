@@ -1,3 +1,4 @@
+from absl import logging
 from collections.abc import Iterable
 import numbers
 import pandas as pd
@@ -14,20 +15,8 @@ import bert4rec.tokenizers.tokenizer_utils as utils
 class SimpleTokenizer(base_tokenizer.BaseTokenizer):
     """
     Converts a string to a unique (numerical) id
-    E.g. a given string containing any potential delimiting/splitting symbols (like "," or " " or "|") is converted
-    to a list of ONE id.
-    Even more concrete example: "Action|Drama|Children" => [2]
-    See: MultiHotContentTokenizer for comparison
     """
     def __init__(self, vocab_file_path: pathlib.Path = None, extensible: bool = True):
-        """
-        Converts a string containing multiple properties seperated by a specific symbol
-        into a list of ids, where each id represents one property (so each string
-        contains multiple part strings seperated by a symbol)
-        E.g. a string containing categories is converted to a list of ids
-        Even more concrete example: "Action|Drama|Children" => [3,5,6]
-        See: FullStringToOneIdContentTokenizer for comparison
-        """
         super().__init__(vocab_file_path=vocab_file_path, extensible=extensible)
         # initialize token map as list as this tokenizer uses numerical tokens and increases the token for each new
         # entry
@@ -118,10 +107,11 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         :param iterable: Iterable that should (individually) be converted to tokens
         :return: List of tokens
         """
-        tokenized = list()
-        for token in (tqdm.tqdm(iterable) if progress_bar else iterable):
-            tokenized.append(self.tokenize(token))
-        return tokenized
+        # usage of dict for performance reasons
+        tokenized = dict()
+        for i, token in enumerate(tqdm.tqdm(iterable) if progress_bar else iterable):
+            tokenized[i] = self.tokenize(token)
+        return list(tokenized.values())
 
     def _tokenize_df_column(self, df_column_input: pd.Series) -> pd.Series:
         """
@@ -143,8 +133,10 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         return tf.ragged.constant(tokenized, dtype=tf.int64)
 
     def _detokenize_token(self, token: int, drop_tokens: list[str] = None):
-        value = None
-        if 0 <= token < self._vocab_size:
+        if token < 0 or token > self._vocab_size:
+            logging.warning(f"The given token {token} is not in the vocabulary.")
+            value = None
+        else:
             value = self._vocab[token]
         if drop_tokens and value in drop_tokens:
             value = None
