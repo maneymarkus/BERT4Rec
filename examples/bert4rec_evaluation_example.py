@@ -1,7 +1,7 @@
 from absl import logging
 import pathlib
 
-from bert4rec.dataloaders import get_dataloader_factory, dataloader_utils
+from bert4rec.dataloaders import get_dataloader_factory, dataloader_utils, samplers
 from bert4rec.evaluation import BERT4RecEvaluator
 from bert4rec.models import BERT4RecModelWrapper, model_utils
 
@@ -12,7 +12,7 @@ def main():
     # set logging to most verbose level
     logging.set_verbosity(logging.DEBUG)
 
-    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m"))
+    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m_3"))
 
     loaded_assets = BERT4RecModelWrapper.load(save_path)
     loaded_wrapper = loaded_assets["model_wrapper"]
@@ -29,7 +29,12 @@ def main():
 
     test_batches = dataloader_utils.make_batches(test_ds, batch_size=256)
 
-    evaluator = BERT4RecEvaluator(dataloader=dataloader)
+    sampler_config = {
+        "sample_size": 100,
+        "allow_duplicates": False
+    }
+    sampler = samplers.get("random", **sampler_config)
+    evaluator = BERT4RecEvaluator(dataloader=dataloader, sampler="popular")
 
     metrics_objects = evaluator.evaluate(loaded_wrapper, test_batches)
     #evaluator.save_results(save_path)

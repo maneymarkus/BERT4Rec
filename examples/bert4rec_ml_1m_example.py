@@ -14,7 +14,7 @@ import bert4rec.utils as utils
 def main():
     # os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 
-    EPOCHS = 150
+    EPOCHS = 100
 
     # set logging to most verbose level
     logging.set_verbosity(logging.DEBUG)
@@ -29,7 +29,7 @@ def main():
     tokenizer = dataloader.get_tokenizer()
 
     # load a specific config
-    config_path = pathlib.Path("../config/bert_train_configs/ml-1m_64.json")
+    config_path = pathlib.Path("../config/bert_train_configs/ml-1m_128.json")
     config = utils.load_json_config(config_path)
 
     bert_encoder = networks.BertEncoder(tokenizer.get_vocab_size(), **config)
@@ -42,7 +42,7 @@ def main():
     trainer = trainers.get(**{"model": model})
     trainer.initialize_model()
 
-    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m"))
+    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m_3"))
     # is needed as this does not create a new folder but rather the base name (or prefix)
     # for the created checkpoint files
     checkpoint_path = save_path.joinpath("checkpoints")
@@ -61,7 +61,6 @@ def main():
         monitor="val_loss",
         patience=15,
         verbose=1,
-        restore_best_weights=True
     )
     trainer.append_callback(early_stopping_callback)
 
