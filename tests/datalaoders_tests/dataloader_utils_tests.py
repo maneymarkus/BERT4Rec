@@ -73,8 +73,10 @@ class DataloaderUtilsTest(tf.test.TestCase):
         df = pd.DataFrame(data)
 
         train_df, val_df, test_df = utils.split_sequence_df(df, group_by_column, sequence_column)
-        self.assertEqual(train_df.shape[0], df_size + 4 - 1,
-                         f"The generated train dataframe should have {df_size + 4 - 1} number of rows "
+        # 4 special cases of which 3 should be filtered out
+        expected_df_size = df_size + 4 - 3
+        self.assertEqual(train_df.shape[0], expected_df_size,
+                         f"The generated train dataframe should have {expected_df_size} number of rows "
                          f"(one special case should be filtered out) but the actual number of rows is: "
                          f"{train_df.shape[0]} ")
         self.assertLessEqual(val_df.shape[0], train_df.shape[0],
@@ -85,12 +87,12 @@ class DataloaderUtilsTest(tf.test.TestCase):
                              f"The generated test dataframe should have less or an equal amount of rows "
                              f"compared to the generated validation dataframe ({val_df.shape[0]}) but actually has: "
                              f"{test_df.shape[0]}")
-        self.assertEqual(val_df.shape[0], df_size + 4 - 3,
-                         f"The generated validation dataframe should have {df_size + 4 - 3} number of rows "
+        self.assertEqual(val_df.shape[0], expected_df_size,
+                         f"The generated validation dataframe should have {expected_df_size} number of rows "
                          f"(three special cases should be filtered out) but the actual number of rows is: "
                          f"{val_df.shape[0]}")
-        self.assertEqual(test_df.shape[0], df_size + 4 - 3,
-                         f"The generated test dataframe should have {df_size + 4 - 3} number of rows "
+        self.assertEqual(test_df.shape[0], expected_df_size,
+                         f"The generated test dataframe should have {expected_df_size} number of rows "
                          f"(three special cases should be filtered out) but the actual number of rows is: "
                          f"{test_df.shape[0]}")
         self.assertEqual(len(val_df["item"].iloc[-1]), 4,
@@ -100,17 +102,7 @@ class DataloaderUtilsTest(tf.test.TestCase):
                          f"The last row of the generated test dataframe should contain a sequence of length 5 "
                          f"but actually has: {len(test_df['item'].iloc[-1])}.\nSequence:{test_df['item'].iloc[-1]}")
 
-        special_subject_2_data = train_df.loc[train_df["subject"] == special_subject_2]
-        special_subject_3_data = train_df.loc[train_df["subject"] == special_subject_3]
         special_subject_4_data = train_df.loc[train_df["subject"] == special_subject_4]
-        self.assertEqual(len(special_subject_2_data["item"].iloc[0]), 2,
-                         f"The length of the second special item sequence in the training dataframe should be 2, "
-                         f"but actually is: {len(special_subject_2_data['item'])}.\n"
-                         f"Sequence:{special_subject_2_data['item']}")
-        self.assertEqual(len(special_subject_3_data["item"].iloc[0]), 4,
-                         f"The length of the third special item sequence in the training dataframe should be 4, "
-                         f"but actually is: {len(special_subject_3_data['item'])}.\n"
-                         f"Sequence:{special_subject_3_data['item']}")
         self.assertEqual(len(special_subject_4_data["item"].iloc[0]), 3,
                          f"The length of the fourth special item sequence in the training dataframe should be 3, "
                          f"but actually is: {len(special_subject_4_data['item'])}.\n"
