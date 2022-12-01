@@ -15,7 +15,8 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
                  mask_token_rate: float = 1.0,
                  random_token_rate: float = 0.0,
                  input_duplication_factor: int = 1,
-                 tokenizer: Union[str, tokenizers.BaseTokenizer] = "simple"):
+                 tokenizer: Union[str, tokenizers.BaseTokenizer] = "simple",
+                 min_sequence_len: int = 5):
 
         super().__init__(
             max_seq_len,
@@ -24,7 +25,9 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
             mask_token_rate,
             random_token_rate,
             input_duplication_factor,
-            tokenizer)
+            tokenizer,
+            min_sequence_len
+        )
 
     @property
     def dataset_identifier(self):
@@ -57,14 +60,15 @@ class BERT4RecML20MDataloader(BERT4RecDataloader):
             duplication_factor = self.input_duplication_factor
 
         df = ml_20m.load_ml_20m()
+        df = df.sort_values(by="timestamp")
 
-        return utils.load_movielens_data_in_split_ds(df, duplication_factor)
+        return utils.split_df_into_three_ds(df, duplication_factor, "uid", "movie_name")
 
-    def generate_vocab(self, source=None) -> True:
+    def generate_vocab(self, source=None, progress_bar: bool = True) -> True:
         if source is None:
             df = ml_20m.load_ml_20m()
             source = set(df["movie_name"])
-        super(BERT4RecML20MDataloader, self).generate_vocab(source)
+        super().generate_vocab(source, progress_bar)
 
     def create_item_list(self) -> list:
         df = ml_20m.load_ml_20m()

@@ -22,7 +22,8 @@ class BERT4RecDataloader(BaseDataloader):
                  mask_token_rate: float = 1.0,
                  random_token_rate: float = 0.0,
                  input_duplication_factor: int = 1,
-                 tokenizer: Union[str, tokenizers.BaseTokenizer] = "simple"):
+                 tokenizer: Union[str, tokenizers.BaseTokenizer] = "simple",
+                 min_sequence_len: int = 5):
         # BERT4Rec works with simple tokenizer
         tokenizer = tokenizers.get(tokenizer)
         super().__init__(tokenizer)
@@ -47,6 +48,7 @@ class BERT4RecDataloader(BaseDataloader):
         self.mask_token_rate = mask_token_rate
         self.random_token_rate = random_token_rate
         self.input_duplication_factor = input_duplication_factor
+        self.min_sequence_len = min_sequence_len
 
     @property
     def dataset_identifier(self):
@@ -61,11 +63,12 @@ class BERT4RecDataloader(BaseDataloader):
             raise ValueError(f"A duplication factor of less than 1 (given: {duplication_factor}) "
                              "is not allowed!")
 
-    def generate_vocab(self, source=None) -> True:
+    def generate_vocab(self, source=None, progress_bar: bool = True) -> True:
         if source is None:
             raise ValueError(f"Need a source to get the vocab from!")
 
-        _ = self.tokenizer.tokenize(source)
+        logging.info("Start generating vocab")
+        _ = self.tokenizer.tokenize(source, progress_bar)
         return True
 
     def create_item_list(self) -> list:

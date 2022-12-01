@@ -36,6 +36,7 @@ def convert_df_to_ds(df: pd.DataFrame, datatypes: list[str] = None):
         datatype = datatypes[0]
     ds = convert_column_to_ds(df.iloc[:, 0], datatype)
 
+    logging.info("Start to convert dataframe to dataset")
     for _, column in df.iteritems():
         if c_index == 0:
             c_index += 1
@@ -78,8 +79,12 @@ def convert_column_to_ds(column: pd.Series, datatype: str = None):
     return ds
 
 
-def split_sequence_df(df: pd.DataFrame, group_by_column: str, sequence_column: str) \
-        -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+def split_sequence_df(
+        df: pd.DataFrame,
+        group_by_column: str,
+        sequence_column: str,
+        min_sequence_length: int = 5
+) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
     """
     Splits a given dataframe with sequence data in three dataframes (for training, validation and testing).
     It is assumed that the `group_by_column` column contains the user (or subject) and the `sequence_column`
@@ -90,6 +95,7 @@ def split_sequence_df(df: pd.DataFrame, group_by_column: str, sequence_column: s
     :param df: A pd.Dataframe object with
     :param group_by_column: The key of the column to group by
     :param sequence_column: The key of the column that will contain the sequence data of interest
+    :param min_sequence_length: Only keep sequences with at least `min_sequence_length` items
     :return:
     """
     if group_by_column not in df.columns:
@@ -102,40 +108,41 @@ def split_sequence_df(df: pd.DataFrame, group_by_column: str, sequence_column: s
 
     sequence_df_columns = [group_by_column, sequence_column]
     grouped_df = df.groupby(group_by_column)
-    train_df = pd.DataFrame(columns=sequence_df_columns)
-    val_df = pd.DataFrame(columns=sequence_df_columns)
-    test_df = pd.DataFrame(columns=sequence_df_columns)
+    train_ds = {}
+    val_ds = {}
+    test_ds = {}
 
     # iterate over groups in grouped_df
     logging.info("Split dataframe:")
     for group, group_data in tqdm.tqdm(grouped_df):
         sequence = group_data[sequence_column].to_list()
         # skip if sequence is too short
-        if len(sequence) < 2:
+        if len(sequence) < min_sequence_length:
             continue
 
         # take all elements for train before checking if there are enough elements to split this sequence
-        group_train_row = [group, sequence]
+        train_ds[group] = sequence
         if len(sequence) >= 5:
             # for train take the first n-2 elements
-            group_train_row = [group, sequence[:-2]]
+            train_ds[group] = sequence[:-2]
             # for validation take the first n-1 elements
-            group_val_row = [group, sequence[:-1]]
+            val_ds[group] = sequence[:-1]
             # for testing take all the elements
-            group_test_row = [group, sequence]
+            test_ds[group] = sequence
 
-            val_df.loc[len(val_df)] = group_val_row
-            test_df.loc[len(test_df)] = group_test_row
-
-        train_df.loc[len(train_df)] = group_train_row
+    train_df = pd.DataFrame(list(train_ds.items()), columns=sequence_df_columns)
+    val_df = pd.DataFrame(list(val_ds.items()), columns=sequence_df_columns)
+    test_df = pd.DataFrame(list(test_ds.items()), columns=sequence_df_columns)
 
     return train_df, val_df, test_df
 
 
-def load_movielens_data_in_split_ds(df: pd.DataFrame, train_duplication_factor: int) \
+def split_df_into_three_ds(df: pd.DataFrame,
+                           train_duplication_factor: int,
+                           group_by_column: str,
+                           sequence_column: str) \
         -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
-    df = df.sort_values(by="timestamp")
-    train_df, val_df, test_df = split_sequence_df(df, "uid", "movie_name")
+    train_df, val_df, test_df = split_sequence_df(df, group_by_column, sequence_column)
     datatypes = ["int64", "list"]
     train_ds = convert_df_to_ds(train_df, datatypes)
     val_ds = convert_df_to_ds(val_df, datatypes)

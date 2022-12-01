@@ -66,7 +66,7 @@ class BaseDataloader(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def generate_vocab(self, source=None) -> True:
+    def generate_vocab(self, source=None, progress_bar: bool = True) -> True:
         """
         Fills the vocab of the tokenizer with items from the respective dataset or given source
 
