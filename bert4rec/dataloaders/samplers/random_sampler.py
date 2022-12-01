@@ -9,6 +9,9 @@ class RandomSampler(BaseSampler):
                  sample_size: int = None,
                  allow_duplicates: bool = True,
                  seed: int = None):
+        if source and not allow_duplicates:
+            # remove duplicates by converting to set and then back to list
+            source = list(set(source.copy()))
         super().__init__(source, sample_size)
         self.allow_duplicates = allow_duplicates
         self.seed = seed
@@ -42,14 +45,20 @@ class RandomSampler(BaseSampler):
         source, sample_size, allow_duplicates = \
             self._get_parameters(source, sample_size, allow_duplicates, seed)
 
-        _ds = source.copy()
-        random.shuffle(_ds)
+        _source = source.copy()
+        random.shuffle(_source)
         # remove duplicates by converting to set and then back to list
         if not allow_duplicates:
-            _ds = list(set(_ds))
+            _source = list(set(_source))
 
         # remove elements from without from source
         if without is not None:
-            _ds = [i for i in _ds if i not in without]
+            _source = [i for i in _source if i not in without]
 
-        return _ds[:sample_size]
+        return _source[:sample_size]
+
+    def set_source(self, source: list):
+        if not self.allow_duplicates:
+            # remove duplicates by converting to set and then back to list
+            source = list(set(source.copy()))
+        super().set_source(source)

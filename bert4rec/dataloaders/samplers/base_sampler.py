@@ -51,7 +51,7 @@ class BaseSampler(abc.ABC):
         pass
 
     def set_source(self, source: list):
-        self.source = source
+        self.source = source.copy()
 
     def set_sample_size(self, sample_size: int):
         self.sample_size = sample_size
