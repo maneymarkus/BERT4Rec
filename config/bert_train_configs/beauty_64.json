@@ -1,9 +1,9 @@
 {
     "attention_dropout": 0.2,
-    "output_dropout": 0.2,
+    "output_dropout": 0.5,
     "hidden_size": 64,
-    "inner_dim": 256,
-    "max_sequence_length": 200,
+    "inner_dim": 64,
+    "max_sequence_length": 50,
     "num_attention_heads": 2,
     "num_layers": 2,
     "type_vocab_size": 2
