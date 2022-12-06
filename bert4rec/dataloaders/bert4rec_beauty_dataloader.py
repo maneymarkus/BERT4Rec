@@ -25,7 +25,7 @@ class BERT4RecBeautyDataloader(BERT4RecDataloader):
                  random_token_rate: float = 0.0,
                  input_duplication_factor: int = 1,
                  tokenizer: Union[str, tokenizers.BaseTokenizer] = "simple",
-                 min_sequence_len: int = 5):
+                 min_sequence_len: int = 3):
 
         super().__init__(
             max_seq_len,

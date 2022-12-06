@@ -48,7 +48,8 @@ class RandomSampler(BaseSampler):
         _source = source.copy()
         random.shuffle(_source)
         # remove duplicates by converting to set and then back to list
-        if not allow_duplicates:
+        # only needs to be done when the self.source is not set
+        if self.source is None:
             _source = list(set(_source))
 
         # remove elements from without from source
