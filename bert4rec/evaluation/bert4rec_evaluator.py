@@ -84,6 +84,9 @@ class BERT4RecEvaluator(BaseEvaluator):
                 # remove all items from the list of items to be ranked that the user has already interacted with
                 remove_items = test_batch["labels"][t_i].numpy().tolist()
                 ground_truth = selected_mlm_ids[i].numpy()
+                # remove ground truth item from sample as well to consistently add it afterwards and always
+                # use 100 + 1 (the ground truth item) items to rank
+                remove_items.append(ground_truth)
 
                 # sample items to rank
                 sampled_rank_items = self.sampler.sample(tokenized_item_list, without=remove_items)
