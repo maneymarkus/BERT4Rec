@@ -116,13 +116,10 @@ def split_sequence_df(
     logging.info("Split dataframe:")
     for group, group_data in tqdm.tqdm(grouped_df):
         sequence = group_data[sequence_column].to_list()
-        # skip if sequence is too short
-        if len(sequence) < min_sequence_length:
-            continue
 
         # take all elements for train before checking if there are enough elements to split this sequence
         train_ds[group] = sequence
-        if len(sequence) >= 5:
+        if len(sequence) >= min_sequence_length:
             # for train take the first n-2 elements
             train_ds[group] = sequence[:-2]
             # for validation take the first n-1 elements
@@ -201,7 +198,7 @@ def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
     selectable_vocab = [i for i in range(vocab_size) if i not in special_token_ids]
 
     # create a list of indexes (item positions) in the sequence that can possibly be masked
-    pos_indexes = [i for i, token in enumerate(sequence) if token not in special_token_ids]
+    pos_indexes = [i for i, _ in enumerate(sequence_without_special_tokens)]
     random.shuffle(pos_indexes)
     # only select num_to_predict - 1 indexes from pos_indexes and sort again
     pos_indexes = pos_indexes[:num_to_predict-1]
