@@ -157,14 +157,6 @@ class BERT4RecDataloader(BaseDataloader):
 
         labels = copy.copy(input_word_ids)
 
-        # pad inputs
-        if self._MAX_SEQ_LENGTH - input_word_ids.shape[0] > 0:
-            paddings = tf.constant([[self._MAX_SEQ_LENGTH - input_word_ids.shape[0], 0]])
-            input_word_ids = tf.pad(input_word_ids, paddings)
-            input_mask = tf.pad(input_mask, paddings)
-            input_type_ids = tf.pad(input_type_ids, paddings)
-            labels = tf.pad(labels, paddings)
-
         # apply dynamic masking task
         if apply_mlm:
             if not finetuning:
@@ -186,11 +178,19 @@ class BERT4RecDataloader(BaseDataloader):
                 input_word_ids = tf.constant(tensor_values, dtype=tf.int64)
                 masked_lm_positions = tf.constant([(len(tensor_values) - 1)], dtype=tf.int64)
 
+            # pad inputs
+            if self._MAX_SEQ_LENGTH - input_word_ids.shape[0] > 0:
+                paddings = tf.constant([[0, self._MAX_SEQ_LENGTH - input_word_ids.shape[0]]])
+                input_word_ids = tf.pad(input_word_ids, paddings)
+                input_mask = tf.pad(input_mask, paddings)
+                input_type_ids = tf.pad(input_type_ids, paddings)
+                labels = tf.pad(labels, paddings)
+
             masked_lm_weights = tf.ones_like(masked_lm_ids)
 
             # pad masked_lm inputs
             if masked_lm_ids.shape[0] < self._MAX_PREDICTIONS_PER_SEQ:
-                paddings = tf.constant([[self._MAX_PREDICTIONS_PER_SEQ - masked_lm_ids.shape[0], 0]])
+                paddings = tf.constant([[0, self._MAX_PREDICTIONS_PER_SEQ - masked_lm_ids.shape[0]]])
                 masked_lm_ids = tf.pad(masked_lm_ids, paddings)
                 masked_lm_positions = tf.pad(masked_lm_positions, paddings)
                 masked_lm_weights = tf.pad(masked_lm_weights, paddings)
