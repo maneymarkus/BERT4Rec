@@ -43,7 +43,7 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
                          "A random item from a preprocessed dataset BERT4Rec dataloader should be a dict with "
                          f"two values, but this one actually has: {len(ds_item)} values.")
         dict_keys = ["masked_lm_ids", "masked_lm_positions", "masked_lm_weights", "labels",
-                     "input_word_ids", "input_mask", "input_type_ids"]
+                     "input_word_ids", "input_mask"]
         self.assertListEqual(list(ds_item.keys()), dict_keys)
 
     def test_load_data_into_ds(self, ds: tf.data.Dataset = None):
@@ -139,7 +139,7 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         self.assertEqual(len(ds_item), 4,
                          "A random item from a BERT4Rec dataloader prepare_training() should be a dict with "
                          f"two values, but this one actually has: {len(ds_item)} values.")
-        dict_keys = {"labels", "input_word_ids", "input_mask", "input_type_ids"}
+        dict_keys = {"labels", "input_word_ids", "input_mask"}
         self.assertAllInSet(list(ds_item.keys()), dict_keys)
 
     def test_prepare_inference(self):
@@ -149,7 +149,7 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         sequence = test_utils.generate_random_word_list()
         model_input = self.dataloader.prepare_inference(sequence)
         self.assertIsInstance(model_input, dict)
-        dict_keys = {"labels", "input_word_ids", "input_mask", "input_type_ids",
+        dict_keys = {"labels", "input_word_ids", "input_mask",
                      "masked_lm_ids", "masked_lm_positions", "masked_lm_weights"}
         self.assertAllInSet(list(model_input.keys()), dict_keys)
         input_word_ids = model_input["input_word_ids"]

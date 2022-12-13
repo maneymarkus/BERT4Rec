@@ -153,7 +153,6 @@ class BERT4RecDataloader(BaseDataloader):
         input_word_ids = tf.constant(segments, dtype=tf.int64)
         # build input mask
         input_mask = tf.ones_like(segments, dtype=tf.int64)
-        input_type_ids = tf.zeros_like(segments, dtype=tf.int64)
 
         labels = copy.copy(input_word_ids)
 
@@ -183,7 +182,6 @@ class BERT4RecDataloader(BaseDataloader):
                 paddings = tf.constant([[0, self._MAX_SEQ_LENGTH - input_word_ids.shape[0]]])
                 input_word_ids = tf.pad(input_word_ids, paddings)
                 input_mask = tf.pad(input_mask, paddings)
-                input_type_ids = tf.pad(input_type_ids, paddings)
                 labels = tf.pad(labels, paddings)
 
             masked_lm_weights = tf.ones_like(masked_lm_ids)
@@ -203,7 +201,6 @@ class BERT4RecDataloader(BaseDataloader):
         processed_features["labels"] = labels
         processed_features["input_word_ids"] = input_word_ids
         processed_features["input_mask"] = input_mask
-        processed_features["input_type_ids"] = input_type_ids
 
         return processed_features
 
@@ -226,7 +223,6 @@ class BERT4RecDataloader(BaseDataloader):
         processed_features_list.append(model_inputs["labels"])
         processed_features_list.append(model_inputs["input_word_ids"])
         processed_features_list.append(model_inputs["input_mask"])
-        processed_features_list.append(model_inputs["input_type_ids"])
 
         if apply_mlm:
             processed_features_list.append(model_inputs["masked_lm_ids"])
@@ -251,11 +247,11 @@ class BERT4RecDataloader(BaseDataloader):
             output = tf.py_function(
                 self.call_feature_preprocessing,
                 [uid, sequence, True, finetuning],
-                [tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64]
+                [tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64]
             )
-            processed_features["masked_lm_ids"] = output[4]
-            processed_features["masked_lm_positions"] = output[5]
-            processed_features["masked_lm_weights"] = output[6]
+            processed_features["masked_lm_ids"] = output[3]
+            processed_features["masked_lm_positions"] = output[4]
+            processed_features["masked_lm_weights"] = output[5]
         else:
             output = tf.py_function(
                 self.call_feature_preprocessing,
@@ -266,7 +262,6 @@ class BERT4RecDataloader(BaseDataloader):
         processed_features["labels"] = output[0]
         processed_features["input_word_ids"] = output[1]
         processed_features["input_mask"] = output[2]
-        processed_features["input_type_ids"] = output[3]
 
         return processed_features
 
