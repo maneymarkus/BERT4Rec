@@ -26,7 +26,7 @@ class Ranker(tf.Module):
 
         if "mlm_logits" in predictions:
             # get output for the last token in the sequence of *masked lm logits*
-            vocab_logits = predictions["mlm_logits"][:, -1]
+            vocab_logits = -predictions["mlm_logits"][:, -1]
 
             if rank_items is not None:
                 vocab_logits = tf.gather(vocab_logits, tokenized_rank_items, axis=-1)
