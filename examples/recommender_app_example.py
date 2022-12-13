@@ -10,7 +10,7 @@ from bert4rec.models import BERT4RecModelWrapper, model_utils
 def main():
     logging.set_verbosity(logging.INFO)
 
-    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m_with_adamw_2"))
+    save_path = model_utils.determine_model_path(pathlib.Path("bert4rec_ml-1m_3"))
 
     loaded_assets = BERT4RecModelWrapper.load(save_path)
     loaded_wrapper = loaded_assets["model_wrapper"]
@@ -28,6 +28,7 @@ def main():
 
     recommender_app = Recommender(model, dataloader)
 
+    # random movie list
     random_movie_indexes = [random.randint(special_tokens_length + 1, vocab_size) for _ in range(5)]
     movie_list_1 = dataloader.tokenizer.detokenize(random_movie_indexes)
     logging.info("First movie list:")
@@ -36,6 +37,7 @@ def main():
     logging.info("Recommendation for first movie list:")
     logging.info(recommendation_1)
 
+    # animated/children movie list
     movie_list_2 = [
         "Toy Story (1995)",
         "Toy Story 2 (1999)",
@@ -50,6 +52,7 @@ def main():
     logging.info("Recommendation for second movie list:")
     logging.info(recommendation_2)
 
+    # action/thriller movie list
     movie_list_3 = [
         "Ghost (1990)",
         "Purple Noon (1960)",
