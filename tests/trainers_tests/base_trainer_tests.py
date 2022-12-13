@@ -2,7 +2,7 @@ from absl import logging
 import tensorflow as tf
 
 from bert4rec.models.components import networks
-from bert4rec.models import BERTModel
+from bert4rec.models import BERT4RecModel
 from bert4rec import trainers
 
 
@@ -10,8 +10,8 @@ class BaseTrainerTests(tf.test.TestCase):
     def setUp(self):
         super(BaseTrainerTests, self).setUp()
         logging.set_verbosity(logging.DEBUG)
-        self.bert_encoder = networks.BertEncoder(200)
-        self.bert_model = BERTModel(self.bert_encoder)
+        self.bert_encoder = networks.Bert4RecEncoder(200)
+        self.bert_model = BERT4RecModel(self.bert_encoder)
         # initialize concrete trainer to test base (abstract) trainer features
         self.trainer = trainers.BERT4RecTrainer(self.bert_model)
 

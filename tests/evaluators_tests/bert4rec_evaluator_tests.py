@@ -6,7 +6,7 @@ import tensorflow as tf
 from bert4rec.dataloaders import dataloader_utils
 import bert4rec.evaluation as evaluation
 from bert4rec.evaluation import evaluation_metrics
-from bert4rec.models import BERTModel, BERT4RecModelWrapper
+from bert4rec.models import BERT4RecModel, BERT4RecModelWrapper
 from bert4rec.models.components import networks
 import bert4rec.utils as utils
 import tests.test_utils as test_utils
@@ -26,8 +26,8 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         config_path = utils.get_project_root().joinpath(f"config/bert_train_configs/{config_identifier}")
         config = utils.load_json_config(config_path)
 
-        bert_encoder = networks.BertEncoder(vocab_size, **config)
-        model = BERTModel(bert_encoder)
+        bert_encoder = networks.Bert4RecEncoder(vocab_size, **config)
+        model = BERT4RecModel(bert_encoder)
         model_wrapper = BERT4RecModelWrapper(model)
         # makes sure the weights are built
         _ = model(model.inputs)
