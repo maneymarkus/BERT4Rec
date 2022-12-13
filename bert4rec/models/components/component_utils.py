@@ -4,6 +4,10 @@ import six
 import tensorflow as tf
 
 
+def approx_gelu(x):
+    return tf.keras.activations.gelu(x, approximate=True)
+
+
 def get_shape_list(tensor, expected_rank=None, name=None):
     """Returns a list of the shape of tensor, preferring static dimensions.
 

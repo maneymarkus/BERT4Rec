@@ -12,7 +12,8 @@ _Initializer = Union[str, tf.keras.initializers.Initializer]
 _Activation = Union[str, Callable[..., Any]]
 
 
-class BertEncoder(tf.keras.layers.Layer):
+class Bert4RecEncoder(tf.keras.layers.Layer):
+#class BertEncoderV2(tf.keras.models.Model):
     """Bi-directional Transformer-based encoder network.
 
     This network implements a bi-directional Transformer-based encoder as
@@ -70,7 +71,7 @@ class BertEncoder(tf.keras.layers.Layer):
             max_sequence_length: int = 512,
             type_vocab_size: int = 16,
             inner_dim: int = 3072,
-            inner_activation: _Activation = component_utils.approx_gelu,
+            inner_activation: _Activation = "gelu",
             output_dropout: float = 0.1,
             attention_dropout: float = 0.1,
             initializer: _Initializer = tf.keras.initializers.TruncatedNormal(
@@ -115,13 +116,6 @@ class BertEncoder(tf.keras.layers.Layer):
             initializer=component_utils.clone_initializer(initializer),
             max_length=max_sequence_length,
             name='position_embedding')
-
-        self._type_embedding_layer = layers.OnDeviceEmbedding(
-            vocab_size=type_vocab_size,
-            embedding_width=embedding_width,
-            initializer=component_utils.clone_initializer(initializer),
-            use_one_hot=True,
-            name='type_embeddings')
 
         self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
             name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
@@ -184,29 +178,25 @@ class BertEncoder(tf.keras.layers.Layer):
             self.inputs = dict(
                 input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
                 input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-                input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
                 dense_inputs=tf.keras.Input(
                     shape=(None, embedding_width), dtype=tf.float32),
                 dense_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-                dense_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
             )
         else:
             self.inputs = dict(
                 input_word_ids=tf.keras.Input(shape=(None,), dtype=tf.int32),
-                input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32),
-                input_type_ids=tf.keras.Input(shape=(None,), dtype=tf.int32))
+                input_mask=tf.keras.Input(shape=(None,), dtype=tf.int32)
+            )
 
     def call(self, inputs):
         word_embeddings = None
         if isinstance(inputs, dict):
             word_ids = inputs.get('input_word_ids')
             mask = inputs.get('input_mask')
-            type_ids = inputs.get('input_type_ids')
             word_embeddings = inputs.get('input_word_embeddings', None)
 
             dense_inputs = inputs.get('dense_inputs', None)
             dense_mask = inputs.get('dense_mask', None)
-            dense_type_ids = inputs.get('dense_type_ids', None)
         else:
             raise ValueError('Unexpected inputs type to %s.' % self.__class__)
 
@@ -216,14 +206,12 @@ class BertEncoder(tf.keras.layers.Layer):
         if dense_inputs is not None:
             # Concat the dense embeddings at sequence end.
             word_embeddings = tf.concat([word_embeddings, dense_inputs], axis=1)
-            type_ids = tf.concat([type_ids, dense_type_ids], axis=1)
             mask = tf.concat([mask, dense_mask], axis=1)
 
         # absolute position embeddings.
         position_embeddings = self._position_embedding_layer(word_embeddings)
-        type_embeddings = self._type_embedding_layer(type_ids)
 
-        embeddings = word_embeddings + position_embeddings + type_embeddings
+        embeddings = word_embeddings + position_embeddings
         embeddings = self._embedding_norm_layer(embeddings)
         embeddings = self._embedding_dropout(embeddings)
 
