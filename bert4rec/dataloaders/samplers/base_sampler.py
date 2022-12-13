@@ -39,7 +39,7 @@ class BaseSampler(abc.ABC):
             logging.info(f"Be aware that the given sample_size ({sample_size}) is equal to or "
                          f"even bigger than the given source (len: {len(source)}), so the "
                          f"whole source is simply returned (except maybe elements that should be "
-                         f"removed.")
+                         f"removed.)")
 
         return source, sample_size
 
