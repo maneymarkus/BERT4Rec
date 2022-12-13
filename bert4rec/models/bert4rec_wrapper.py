@@ -4,8 +4,8 @@ import pathlib
 import tensorflow as tf
 from typing import Union
 
-from bert4rec.models.components import layers, networks
-from bert4rec.models.bert_model import BERTModel
+from bert4rec.models.components import layers, networks, component_utils
+from bert4rec.models.bert4rec_model import BERT4RecModel
 from bert4rec.models.model_wrapper import ModelWrapper
 import bert4rec.models.model_utils as utils
 from bert4rec import tokenizers
@@ -18,7 +18,7 @@ _MODEL_WEIGHTS_FILES_PREFIX = "model_weights"
 
 
 class BERT4RecModelWrapper(ModelWrapper):
-    def __init__(self, bert_model: BERTModel):
+    def __init__(self, bert_model: BERT4RecModel):
         super().__init__(bert_model)
         self.bert_model = bert_model
         self.update_meta(
@@ -88,15 +88,16 @@ class BERT4RecModelWrapper(ModelWrapper):
 
         loaded_assets = dict()
         loaded_bert = tf.keras.models.load_model(save_path, custom_objects={
-            "BERTModel": BERTModel,
-            "BertEncoderV2": networks.BertEncoder,
+            "BERT4RecModel": BERT4RecModel,
+            "Bert4RecEncoder": networks.Bert4RecEncoder,
+            "BertEncoder": networks.BertEncoder,
             "OnDeviceEmbedding": layers.OnDeviceEmbedding,
             "PositionEmbedding": layers.PositionEmbedding,
             "SelfAttentionMask": layers.SelfAttentionMask,
             "TransformerEncoderBlock": layers.TransformerEncoderBlock,
             "RelativePositionEmbedding": layers.RelativePositionEmbedding,
             "RelativePositionBias": layers.RelativePositionBias,
-            "approx_gelu": networks.bert_encoder.approx_gelu,
+            "approx_gelu": component_utils.approx_gelu,
             "AdamWeightDecay": optimizers.AdamWeightDecay,
             "masked_accuracy": trainer_utils.masked_accuracy,
             "MaskedSparseCategoricalCrossentropy": trainer_utils.MaskedSparseCategoricalCrossentropy,
@@ -125,7 +126,7 @@ class BERT4RecModelWrapper(ModelWrapper):
                              encoder_input: dict,
                              rank_items: list = None):
 
-        encoder_output = self.bert_model(encoder_input)
+        encoder_output = self.bert_model(encoder_input, training=False)
         mlm_logits_batch = encoder_output["mlm_logits"]
 
         if "masked_lm_weights" in encoder_input:
@@ -141,12 +142,13 @@ class BERT4RecModelWrapper(ModelWrapper):
             for mlm_i, token_logits in enumerate(mlm_logits):
                 if rank_items is not None and type(rank_items[0]) is list:
                     # => individual ranking list for each token (output)
-                    token_logits = tf.gather(token_logits, rank_items[b_i][mlm_i], axis=-1)
                     rank_items_list = rank_items[b_i][mlm_i]
+                    token_logits = tf.gather(token_logits, rank_items_list, axis=-1)
                     sorted_indexes = tf.argsort(token_logits, direction="DESCENDING")
                     ranking = tf.gather(rank_items_list, sorted_indexes)
                 else:
                     ranking = tf.argsort(token_logits, direction="DESCENDING")
+
                 batch_rankings.append(ranking)
             rankings.append(batch_rankings)
         return rankings

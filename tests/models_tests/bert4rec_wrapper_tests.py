@@ -5,7 +5,7 @@ import tempfile
 import tensorflow as tf
 
 from bert4rec.dataloaders import dataloader_utils
-from bert4rec.models import BERTModel, BERT4RecModelWrapper
+from bert4rec.models import BERT4RecModel, BERT4RecModelWrapper
 from bert4rec.models.bert4rec_wrapper import _META_CONFIG_FILE_NAME, _TOKENIZER_VOCAB_FILE_NAME
 from bert4rec.models.components import networks
 from bert4rec import tokenizers
@@ -25,8 +25,8 @@ class BERT4RecWrapperTests(tf.test.TestCase):
         self.optimizer = None
 
     def _build_model(self, vocab_size: int, optimizer: tf.keras.optimizers.Optimizer = None):
-        bert_encoder = networks.BertEncoder(vocab_size=vocab_size)
-        bert_model = BERTModel(bert_encoder)
+        bert_encoder = networks.Bert4RecEncoder(vocab_size=vocab_size)
+        bert_model = BERT4RecModel(bert_encoder)
         if optimizer is None:
             optimizer = self.optimizer
         bert_model.compile(
@@ -74,12 +74,12 @@ class BERT4RecWrapperTests(tf.test.TestCase):
                               f"The loaded model wrapper should be an instance of {BERT4RecModelWrapper}, "
                               f"but is an instance of: {type(reloaded_wrapper)}")
         # assertions fail because (re)loading a saved models does not instantiate the original class yet
-        self.assertIsInstance(reloaded_bert_model, BERTModel,
+        self.assertIsInstance(reloaded_bert_model, BERT4RecModel,
                               f"The loaded (in the model wrapper contained) model should be an instance of "
-                              f"{BERTModel} but is actually an instance of: {type(reloaded_bert_model)}")
-        self.assertIsInstance(reloaded_encoder, networks.BertEncoder,
+                              f"{BERT4RecModel} but is actually an instance of: {type(reloaded_bert_model)}")
+        self.assertIsInstance(reloaded_encoder, networks.Bert4RecEncoder,
                               f"The loaded encoder layer (contained in the loaded model) should be an instance of "
-                              f"{networks.BertEncoder} but actually is an instance of: "
+                              f"{networks.Bert4RecEncoder} but actually is an instance of: "
                               f"{type(reloaded_encoder)}")
         self.assertIsInstance(tokenizer, tokenizers.SimpleTokenizer,
                               f"Saving a model with a tokenizer should actually also save the tokenizer "

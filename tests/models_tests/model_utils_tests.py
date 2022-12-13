@@ -4,7 +4,7 @@ import random
 import tensorflow as tf
 
 import bert4rec.dataloaders.dataloader_utils as dataloader_utils
-from bert4rec.models import BERTModel
+from bert4rec.models import BERT4RecModel
 from bert4rec.models.components import networks
 import bert4rec.models.model_utils as utils
 import tests.test_utils as test_utils
@@ -19,8 +19,8 @@ class ModelUtilsTests(tf.test.TestCase):
         pass
 
     def _build_model(self, vocab_size: int):
-        bert_encoder = networks.BertEncoder(vocab_size=vocab_size)
-        return BERTModel(bert_encoder)
+        bert_encoder = networks.Bert4RecEncoder(vocab_size=vocab_size)
+        return BERT4RecModel(bert_encoder)
 
     def test_determine_model_path(self):
         path = pathlib.Path(".")

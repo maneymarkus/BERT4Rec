@@ -15,17 +15,15 @@ train_step_signature = [{
     "labels": tf.TensorSpec(shape=(None, None), dtype=tf.int64),
     "input_word_ids": tf.TensorSpec(shape=(None, None), dtype=tf.int64),
     "input_mask": tf.TensorSpec(shape=(None, None), dtype=tf.int64),
-    "input_type_ids": tf.TensorSpec(shape=(None, None), dtype=tf.int64),
     "masked_lm_ids": tf.TensorSpec(shape=(None, None), dtype=tf.int64),
     "masked_lm_positions": tf.TensorSpec(shape=(None, None), dtype=tf.int64),
     "masked_lm_weights": tf.TensorSpec(shape=(None, None), dtype=tf.int64),
 }]
 
-
 SPECIAL_TOKEN_IDS = BERT4RecDataloader(0, 0)._SPECIAL_TOKEN_IDS
 
 
-class BERTModel(tf.keras.Model):
+class BERT4RecModel(tf.keras.Model):
     """
     NOTE: The model can only be saved, when completely initialized (when using the saving api).
     For a not further known reason (but empirically tested), saving a subclassed Keras model with a
@@ -38,9 +36,9 @@ class BERTModel(tf.keras.Model):
     """
 
     def __init__(self,
-                 encoder: networks.BertEncoder,
+                 encoder: networks.Bert4RecEncoder,
                  customized_masked_lm: Optional[tf.keras.layers.Layer] = None,
-                 mlm_activation=None,
+                 mlm_activation="gelu",
                  mlm_initializer="glorot_uniform",
                  name: str = "bert",
                  special_token_ids: list[int] = SPECIAL_TOKEN_IDS,
@@ -57,7 +55,7 @@ class BERTModel(tf.keras.Model):
         :param kwargs:
         """
 
-        super(BERTModel, self).__init__(name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
 
         self._config = {
             "encoder": encoder,
@@ -117,10 +115,9 @@ class BERTModel(tf.keras.Model):
         outputs = dict()
         encoder_inputs = {
             "input_word_ids": inputs["input_word_ids"],
-            "input_type_ids": inputs["input_type_ids"],
             "input_mask": inputs["input_mask"],
         }
-        encoder_network_outputs = self.encoder(encoder_inputs)
+        encoder_network_outputs = self.encoder(encoder_inputs, training=training)
         if isinstance(encoder_network_outputs, list):
             outputs['pooled_output'] = encoder_network_outputs[1]
             # When `encoder_network` was instantiated with return_all_encoder_outputs
@@ -193,7 +190,7 @@ class BERTModel(tf.keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
     def get_config(self):
-        config = super(BERTModel, self).get_config()
+        config = super().get_config()
         config.update(self._config)
         return config
 

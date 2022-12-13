@@ -2,7 +2,7 @@ from absl import logging
 import tensorflow as tf
 
 from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils
-from bert4rec.models.bert_model import BERTModel
+from bert4rec.models.bert4rec_model import BERT4RecModel
 from bert4rec.models.components import networks
 from bert4rec.trainers import optimizers
 import tests.test_utils as test_utils
@@ -24,10 +24,10 @@ class BERTModelTests(tf.test.TestCase):
                      hidden_size: int,
                      num_layers: int,
                      optimizer: tf.keras.optimizers.Optimizer = None):
-        bert_encoder = networks.BertEncoder(vocab_size=vocab_size,
+        bert_encoder = networks.Bert4RecEncoder(vocab_size=vocab_size,
                                             hidden_size=hidden_size,
                                             num_layers=num_layers)
-        bert_model = BERTModel(bert_encoder)
+        bert_model = BERT4RecModel(bert_encoder)
         if optimizer is None:
             optimizer = self.optimizer
         bert_model.compile(
