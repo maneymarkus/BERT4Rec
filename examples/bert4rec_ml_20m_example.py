@@ -5,7 +5,7 @@ import tensorflow as tf
 from bert4rec.dataloaders import get_dataloader_factory, dataloader_utils
 from bert4rec.evaluation import BERT4RecEvaluator
 from bert4rec.models.components import networks
-from bert4rec.models import BERTModel, BERT4RecModelWrapper, model_utils
+from bert4rec.models import BERT4RecModel, BERT4RecModelWrapper, model_utils
 from bert4rec import trainers
 from bert4rec.trainers import optimizers
 import bert4rec.utils as utils
@@ -32,8 +32,8 @@ def main():
     config_path = pathlib.Path("../config/bert_train_configs/ml-20m_256.json")
     config = utils.load_json_config(config_path)
 
-    bert_encoder = networks.BertEncoder(tokenizer.get_vocab_size(), **config)
-    model = BERTModel(bert_encoder)
+    bert_encoder = networks.Bert4RecEncoder(tokenizer.get_vocab_size(), **config)
+    model = BERT4RecModel(bert_encoder)
     model_wrapper = BERT4RecModelWrapper(model)
     # makes sure the weights are built
     _ = model(model.inputs)

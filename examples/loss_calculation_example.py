@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from bert4rec.dataloaders import get_dataloader_factory, dataloader_utils
 from bert4rec.models.components import networks
-from bert4rec.models import BERTModel
+from bert4rec.models import BERT4RecModel
 from bert4rec.trainers import trainer_utils
 import bert4rec.utils as utils
 
@@ -29,8 +29,8 @@ def main():
     config_path = pathlib.Path("../config/bert_train_configs/ml-1m_128.json")
     config = utils.load_json_config(config_path)
 
-    bert_encoder = networks.BertEncoder(tokenizer.get_vocab_size(), **config)
-    model = BERTModel(bert_encoder)
+    bert_encoder = networks.Bert4RecEncoder(tokenizer.get_vocab_size(), **config)
+    model = BERT4RecModel(bert_encoder)
 
     train_batches = dataloader_utils.make_batches(train_ds)
     for b in train_batches.take(1):
