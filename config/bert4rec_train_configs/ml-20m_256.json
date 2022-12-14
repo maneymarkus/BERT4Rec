@@ -5,6 +5,5 @@
     "inner_dim": 1024,
     "max_sequence_length": 200,
     "num_attention_heads": 8,
-    "num_layers": 2,
-    "type_vocab_size": 2
+    "num_layers": 2
 }

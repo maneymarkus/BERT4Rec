@@ -1,0 +1,9 @@
+{
+    "attention_dropout": 0.2,
+    "output_dropout": 0.2,
+    "hidden_size": 64,
+    "inner_dim": 256,
+    "max_sequence_length": 200,
+    "num_attention_heads": 2,
+    "num_layers": 2
+}
