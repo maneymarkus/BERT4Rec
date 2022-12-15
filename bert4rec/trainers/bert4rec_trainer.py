@@ -26,6 +26,7 @@ class BERT4RecTrainer(BaseTrainer):
 
         if metrics is None:
             metrics = [
+                # somehow necessary as otherwise there are problems with saving
                 tf.keras.metrics.SparseCategoricalAccuracy(),
                 trainer_utils.masked_accuracy
             ]
