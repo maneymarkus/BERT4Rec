@@ -5,7 +5,7 @@ from .adam_w_optimizer import *
 
 
 def create_adam_w_optimizer(init_lr: float = 1e-4,
-                            num_train_steps: int = 100000,
+                            num_train_steps: int = 400000,
                             num_warmup_steps: int = 100,
                             end_lr: float = 0.0,
                             weight_decay_rate: float = 0.01,
