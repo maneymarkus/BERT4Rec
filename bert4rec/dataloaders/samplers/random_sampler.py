@@ -37,8 +37,8 @@ class RandomSampler(BaseSampler):
         return source, sample_size, allow_duplicates
 
     def sample(self,
-               source: list = None,
                sample_size: int = None,
+               source: list = None,
                allow_duplicates: bool = True,
                seed: int = None,
                without: list = None) -> list:

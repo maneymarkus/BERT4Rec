@@ -14,8 +14,8 @@ class PopularSampler(BaseSampler):
             self.source = dataloader_utils.rank_items_by_popularity(self.source)
 
     def sample(self,
-               source: list = None,
                sample_size: int = None,
+               source: list = None,
                without: list = None) -> list:
         source, sample_size = self._get_parameters(source, sample_size)
 

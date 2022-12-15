@@ -45,8 +45,8 @@ class BaseSampler(abc.ABC):
 
     @abc.abstractmethod
     def sample(self,
-               source: list = None,
                sample_size: int = None,
+               source: list = None,
                without: list = None) -> list:
         pass
 
