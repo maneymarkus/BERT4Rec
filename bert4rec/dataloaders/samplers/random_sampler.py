@@ -4,6 +4,10 @@ from .base_sampler import BaseSampler
 
 
 class RandomSampler(BaseSampler):
+    """
+    Samples randomly from a given source list.
+
+    """
     def __init__(self,
                  source: list = None,
                  sample_size: int = None,

@@ -1,10 +1,15 @@
 from .base_sampler import BaseSampler
-
 from bert4rec.dataloaders import dataloader_utils
-from bert4rec.evaluation import evaluation_utils
 
 
 class PopularSampler(BaseSampler):
+    """
+    Samples "rigidly" according to the popularity of items in given sources.
+    Popularity is being determined on the basis of the frequency of occurrences of individual
+    items. Then the items are sorted according to their popularity and the sample method returns
+    the first `sample_size` items from this sorted list.
+
+    """
     def __init__(self,
                  source: list = None,
                  sample_size: int = None):
