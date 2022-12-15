@@ -143,7 +143,7 @@ class BERT4RecModelWrapper(ModelWrapper):
                 if rank_items is not None and type(rank_items[0]) is list:
                     # => individual ranking list for each token (output)
                     rank_items_list = rank_items[b_i][mlm_i]
-                    token_logits = tf.gather(token_logits, rank_items_list, axis=-1)
+                    token_logits = tf.gather(token_logits, rank_items_list)
                     sorted_indexes = tf.argsort(token_logits, direction="DESCENDING")
                     ranking = tf.gather(rank_items_list, sorted_indexes)
                 else:
