@@ -194,15 +194,15 @@ num_layers = 6
 num_attention_heads = 8
 # See class definition for which parameters can be set
 encoder = networks.Bert4RecEncoder(vocab_size=vocab_size,
-                               num_layers=num_layers,
-                               num_attention_heads=num_attention_heads)
+                                   num_layers=num_layers,
+                                   num_attention_heads=num_attention_heads)
 model_1 = models.BERT4RecModel(encoder)
 
 # METHOD TWO: via predefined models config (can be found and created in the respective configs directory)
 # freely defined path
-config_path = pathlib.Path("../config/bert_train_configs/ml-1m_128.json")
+config_path = pathlib.Path("../config/bert4rec_train_configs/ml-1m_128.json")
 # or safer: path relative from project root
-config_path = utils.get_project_root().joinpath("config/bert_train_configs/ml-1m_128.json")
+config_path = utils.get_project_root().joinpath("config/bert4rec_train_configs/ml-1m_128.json")
 encoder_config = utils.load_json_config(config_path)
 encoder_2 = networks.Bert4RecEncoder(vocab_size, **encoder_config)
 model_2 = models.BERT4RecModel(encoder_2)
