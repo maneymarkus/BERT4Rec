@@ -13,7 +13,7 @@ class ModelWrapper(abc.ABC):
             "trained_on_dataset": None,
         }
 
-    def get_meta(self) -> dict:
+    def get_meta_config(self) -> dict:
         return self._meta_config
 
     def update_meta(self, updated_info: dict) -> True:

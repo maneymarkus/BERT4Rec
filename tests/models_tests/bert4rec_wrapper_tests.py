@@ -224,13 +224,13 @@ class BERT4RecWrapperTests(tf.test.TestCase):
         wrapper = BERT4RecModelWrapper(bert_model)
 
         wrapper.update_meta(new_entries)
-        meta_config = wrapper.get_meta()
+        meta_config = wrapper.get_meta_config()
         self.assertIn("new_entry", meta_config,
                       f"'new_entry' should be a key present in the meta config of the wrapper class "
-                      f"but it has only these keys: {wrapper.get_meta().keys()}.")
+                      f"but it has only these keys: {wrapper.get_meta_config().keys()}.")
         self.assertIn("some", meta_config,
                       f"'some' should be a key present in the meta config of the wrapper class "
-                      f"but it has only these keys: {wrapper.get_meta().keys()}.")
+                      f"but it has only these keys: {wrapper.get_meta_config().keys()}.")
         self.assertEqual(new_entries["new_entry"], meta_config["new_entry"],
                          f"The values for the 'new_entry' key should be equal in the new_entries dict and "
                          f"the meta_config dict."
@@ -248,15 +248,15 @@ class BERT4RecWrapperTests(tf.test.TestCase):
         bert_model = self._build_model(vocab_size)
         wrapper = BERT4RecModelWrapper(bert_model)
 
-        meta_config = wrapper.get_meta()
+        meta_config = wrapper.get_meta_config()
         meta_keys = list(meta_config.keys())
         random_meta_key = random.choice(meta_keys)
         logging.debug(random_meta_key)
         wrapper.delete_keys_from_meta(random_meta_key)
-        self.assertNotIn(random_meta_key, wrapper.get_meta(),
+        self.assertNotIn(random_meta_key, wrapper.get_meta_config(),
                          f"Deleting a key ({random_meta_key}) from the meta config "
                          f"should remove it from the meta config dict, but it is still available in: "
-                         f"{wrapper.get_meta()}")
+                         f"{wrapper.get_meta_config()}")
 
         if len(meta_config) < 3:
             wrapper.update_meta({"key1": "value1", "key2": "value2", "key3": "value3"})
@@ -265,10 +265,10 @@ class BERT4RecWrapperTests(tf.test.TestCase):
         random_meta_keys = [random.choice(meta_keys) for _ in range(2)]
         wrapper.delete_keys_from_meta(random_meta_keys)
         for rmk in random_meta_keys:
-            self.assertNotIn(rmk, wrapper.get_meta(),
+            self.assertNotIn(rmk, wrapper.get_meta_config(),
                              f"Deleting a list of keys ({random_meta_keys}) should remove both keys from "
                              f"the meta config dict, but the key '{rmk}' is still available in: "
-                             f"{wrapper.get_meta()}")
+                             f"{wrapper.get_meta_config()}")
 
 
 if __name__ == "__main__":
