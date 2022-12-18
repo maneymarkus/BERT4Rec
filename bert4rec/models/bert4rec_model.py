@@ -40,7 +40,7 @@ class BERT4RecModel(tf.keras.Model):
                  customized_masked_lm: Optional[tf.keras.layers.Layer] = None,
                  mlm_activation="gelu",
                  mlm_initializer="glorot_uniform",
-                 name: str = "bert",
+                 name: str = "bert4rec",
                  special_token_ids: list[int] = SPECIAL_TOKEN_IDS,
                  **kwargs):
         """
