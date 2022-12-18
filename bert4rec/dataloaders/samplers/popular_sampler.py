@@ -1,3 +1,5 @@
+from absl import logging
+
 from .base_sampler import BaseSampler
 from bert4rec.dataloaders import dataloader_utils
 
@@ -12,17 +14,48 @@ class PopularSampler(BaseSampler):
     """
     def __init__(self,
                  source: list = None,
+                 vocab: list = None,
                  sample_size: int = None):
-        super().__init__(source, sample_size)
+        super().__init__(source, vocab, sample_size)
         # already rank source list for performance
         if self.source is not None:
             self.source = dataloader_utils.rank_items_by_popularity(self.source)
 
+    def is_fully_prepared(self) -> bool:
+        if self.source is None:
+            return False
+        if self.sample_size is None:
+            return False
+        return True
+
+    def _get_parameters(self,
+                        source: list = None,
+                        vocab: list = None,
+                        sample_size: int = None):
+        source, vocab, sample_size = super()._get_parameters(source, vocab, sample_size)
+
+        if vocab is not None:
+            logging.info("The vocab argument is not necessary for the popular sampler. It just "
+                         "supports it for compatibility reasons.")
+
+        if source is None:
+            raise ValueError("The source argument has to be provided to the popular sampler but "
+                             "None was given.")
+
+        if sample_size >= len(source):
+            logging.info(f"The given sample size ({sample_size}) is bigger than the length of "
+                         "the given source list. The popular sampler will then return just "
+                         "the whole source list and the sample size will be smaller than "
+                         "wanted.")
+
+        return source, vocab, sample_size
+
     def sample(self,
                sample_size: int = None,
                source: list = None,
+               vocab: list = None,
                without: list = None) -> list:
-        source, sample_size = self._get_parameters(source, sample_size)
+        source, vocab, sample_size = self._get_parameters(source, vocab, sample_size)
 
         _source = source.copy()
 

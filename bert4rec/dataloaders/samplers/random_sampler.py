@@ -1,68 +1,82 @@
-import random
+import numpy as np
 
 from .base_sampler import BaseSampler
 
 
 class RandomSampler(BaseSampler):
     """
-    Samples randomly from a given source list.
+    Samples randomly from a given source assuming a uniform distribution. If the vocab argument
+    is given then this list will be used for sampling. If the vocab argument is not given
+    but the source argument is then the duplicates will be removed from this list and the result
+    will be set as the vocab list.
 
     """
     def __init__(self,
                  source: list = None,
+                 vocab: list = None,
                  sample_size: int = None,
-                 allow_duplicates: bool = True,
+                 allow_duplicates: bool = False,
                  seed: int = None):
-        if source and not allow_duplicates:
+        super().__init__(source, vocab, sample_size)
+        if self.vocab is None and self.source is not None:
             # remove duplicates by converting to set and then back to list
-            source = list(set(source.copy()))
-        super().__init__(source, sample_size)
+            self.vocab = list(set(self.source))
         self.allow_duplicates = allow_duplicates
         self.seed = seed
 
+    def is_fully_prepared(self) -> bool:
+        if self.vocab is None:
+            return False
+        if self.sample_size is None:
+            return False
+        return True
+
     def _get_parameters(self,
                         source: list = None,
+                        vocab: list = None,
                         sample_size: int = None,
-                        allow_duplicates: bool = True,
+                        allow_duplicates: bool = None,
                         seed: int = None):
-        source, sample_size = super()._get_parameters(source, sample_size)
+        source, vocab, sample_size = super()._get_parameters(source, vocab, sample_size)
+
+        if vocab is None and source is not None and self.source is None:
+            vocab = list(set(source))
+
+        if vocab is None:
+            raise ValueError("No vocab or any other source has been given to the random sampler.")
 
         if seed is None:
             seed = self.seed
-        random.seed(seed)
+        np.random.seed(seed)
 
         if allow_duplicates is None:
             allow_duplicates = self.allow_duplicates
-            if self.allow_duplicates is None:
-                raise ValueError("The allow duplicates argument has to be given either during the "
-                                 "initialization of the sampler or as an argument in the "
-                                 "function call.")
 
-        return source, sample_size, allow_duplicates
+        if allow_duplicates is False and sample_size > len(vocab):
+            raise ValueError("When no duplicates are allowed in the final sample then the "
+                             f"sample size (given sample size: {sample_size})) can not be greater "
+                             "than the length length of the vocab (length of the vocab: "
+                             f"{len(vocab)})")
+
+        return source, vocab, sample_size, allow_duplicates
 
     def sample(self,
                sample_size: int = None,
                source: list = None,
-               allow_duplicates: bool = True,
+               vocab: list = None,
+               allow_duplicates: bool = None,
                seed: int = None,
                without: list = None) -> list:
-        source, sample_size, allow_duplicates = \
-            self._get_parameters(source, sample_size, allow_duplicates, seed)
+        source, vocab, sample_size, allow_duplicates = \
+            self._get_parameters(source, vocab, sample_size, allow_duplicates, seed)
 
-        _source = source.copy()
-
-        # remove duplicates by converting to set and then back to list
-        # only needs to be done when the self.source is not set
-        if not allow_duplicates and self.source is None:
-            _source = list(set(_source))
-
-        random.shuffle(_source)
+        _source = vocab.copy()
 
         # remove elements from without from source
         if without is not None:
             _source = [i for i in _source if i not in without]
 
-        return _source[:sample_size]
+        return np.random.choice(_source, size=sample_size, replace=allow_duplicates).tolist()
 
     def set_source(self, source: list):
         if not self.allow_duplicates:
