@@ -10,7 +10,7 @@ class PopularSamplerTests(tf.test.TestCase):
     def setUp(self):
         super().setUp()
         logging.set_verbosity(logging.DEBUG)
-        self.sampler = samplers.get("popular")
+        self.sampler = samplers.PopularSampler()
 
     def tearDown(self):
         super().tearDown()
@@ -36,21 +36,21 @@ class PopularSamplerTests(tf.test.TestCase):
 
         # sampling should not change the original ds
         ds_copy = ds.copy()
-        _ = self.sampler.sample(ds, 5)
+        _ = self.sampler.sample(5, ds)
         self.assertListEqual(ds, ds_copy)
 
         sample_size = 5
-        sample_1 = self.sampler.sample(ds, sample_size)
+        sample_1 = self.sampler.sample(sample_size, ds)
         self._assert_sample(sample_1, ds, sample_size)
 
         sample_size = 10
-        sample_2 = self.sampler.sample(ds, sample_size)
+        sample_2 = self.sampler.sample(sample_size, ds)
         self._assert_sample(sample_2, ds, len(set(ds)))
 
         sample_size = -3
         with self.assertRaises(ValueError):
-            self.sampler.sample(ds, sample_size)
-            self.sampler.sample(None, 3)
+            self.sampler.sample(sample_size, ds)
+            self.sampler.sample(3, None)
 
         # initialize sampler with initial values
         sampler_config = {

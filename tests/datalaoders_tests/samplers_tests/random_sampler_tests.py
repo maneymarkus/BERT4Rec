@@ -1,6 +1,5 @@
 from absl import logging
 import tensorflow as tf
-import random
 
 from bert4rec.dataloaders import samplers
 from tests import test_utils
@@ -10,7 +9,7 @@ class RandomSamplerTests(tf.test.TestCase):
     def setUp(self):
         super().setUp()
         logging.set_verbosity(logging.DEBUG)
-        self.sampler = samplers.get("random")
+        self.sampler = samplers.RandomSampler()
 
     def tearDown(self):
         super().tearDown()
@@ -28,27 +27,27 @@ class RandomSamplerTests(tf.test.TestCase):
 
         # sampling should not change the original ds
         ds_copy = ds.copy()
-        _ = self.sampler.sample(ds, 5)
+        _ = self.sampler.sample(5, ds)
         self.assertListEqual(ds, ds_copy)
 
         sample_size = 20
-        sample_1 = self.sampler.sample(ds, sample_size)
+        sample_1 = self.sampler.sample(sample_size, ds)
         self._assert_sample(sample_1, ds, sample_size)
 
         sample_size = 220
-        sample_2 = self.sampler.sample(ds, sample_size)
-        self._assert_sample(sample_2, ds, len(ds))
+        sample_2 = self.sampler.sample(sample_size, ds, allow_duplicates=True)
+        self._assert_sample(sample_2, ds, sample_size)
 
-        sample_size = -3
         with self.assertRaises(ValueError):
-            self.sampler.sample(ds, sample_size)
-            self.sampler.sample(None, 3)
+            self.sampler.sample(-3, ds)
+            self.sampler.sample(3, None)
+            self.sampler.sample(220, ds, allow_duplicates=False)
 
         sample_size = 5
         seed = 319
-        sample_3 = self.sampler.sample(ds, sample_size, seed=seed)
+        sample_3 = self.sampler.sample(sample_size, ds, seed=seed)
         seed = 5015
-        sample_4 = self.sampler.sample(ds, sample_size, seed=seed)
+        sample_4 = self.sampler.sample(sample_size, ds, seed=seed)
         self.assertNotAllEqual(sample_3, sample_4)
 
         # initialize sampler with initial values
@@ -60,10 +59,13 @@ class RandomSamplerTests(tf.test.TestCase):
 
         # test sample without certain elements and less than sample_size remaining elements
         without_list = ds[:-2]
-        sample_5 = self.sampler.sample(without=without_list)
+        with self.assertRaises(ValueError):
+            self.sampler.sample(without=without_list)
+
+        sample_5 = self.sampler.sample(without=without_list, allow_duplicates=True)
         for sample_element in sample_5:
             self.assertNotIn(sample_element, without_list)
-        expected_length = len(ds) - len(without_list)
+        expected_length = 20
         self._assert_sample(sample_5, ds, expected_length)
 
         # test sample without certain elements and more than sample_size remaining elements

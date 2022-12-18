@@ -51,7 +51,7 @@ def generate_random_sequence_dataset(ds_size: int = 1000,
     for i in range(ds_size):
         subject_list.append(random.randint(0, ds_size * 2))
         sequence_length = random.randint(seq_min_len, seq_max_len)
-        sequence = sampler.sample(vocab, sequence_length)
+        sequence = sampler.sample(sequence_length, vocab=vocab)
         sequence_list.append(sequence)
     sequences = tf.ragged.constant(sequence_list)
     ds = tf.data.Dataset.from_tensor_slices((subject_list, sequences))
