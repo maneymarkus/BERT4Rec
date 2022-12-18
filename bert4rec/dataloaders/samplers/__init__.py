@@ -3,11 +3,14 @@ from typing import Union
 from bert4rec.dataloaders.samplers.base_sampler import BaseSampler
 from bert4rec.dataloaders.samplers.random_sampler import RandomSampler
 from bert4rec.dataloaders.samplers.popular_sampler import PopularSampler
+from bert4rec.dataloaders.samplers.popular_random_sampler import PopularRandomSampler
 
 
 samplers_map = {
     "random": RandomSampler,
-    "popular": PopularSampler
+    "popular": PopularSampler,
+    "pop_random": PopularRandomSampler,
+    "popular_random": PopularRandomSampler,
 }
 
 
