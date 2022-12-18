@@ -1,3 +1,4 @@
 from .base_sampler_tests import BaseSamplerTests
 from .popular_sampler_tests import PopularSamplerTests
+from .popular_random_sampler_tests import PopularRandomSamplerTests
 from .random_sampler_tests import RandomSamplerTests
