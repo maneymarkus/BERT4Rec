@@ -24,7 +24,7 @@ bert4rec_evaluation_metrics = [
 class BERT4RecEvaluator(BaseEvaluator):
     def __init__(self,
                  metrics: list[EvaluationMetric] = None,
-                 sampler: Union[str, samplers.BaseSampler] = "popular",
+                 sampler: Union[str, samplers.BaseSampler] = "pop_random",
                  dataloader: BaseDataloader = None):
         if metrics is None:
             metrics = bert4rec_evaluation_metrics
@@ -32,25 +32,31 @@ class BERT4RecEvaluator(BaseEvaluator):
             sampler_config = {
                 "sample_size": 100
             }
+            if dataloader is not None:
+                vocab = dataloader.tokenizer.get_vocab()
+                tokenized_vocab = dataloader.tokenizer.tokenize(vocab)
+                sampler_config.update({
+                    "source": dataloader.create_item_list_tokenized(),
+                    "vocab": tokenized_vocab
+                })
             sampler = samplers.get(sampler, **sampler_config)
+
         super().__init__(metrics, sampler, dataloader)
 
     def evaluate(self, wrapper: BERT4RecModelWrapper,
-                 test_data: tf.data.Dataset,
-                 tokenized_ds_item_list: list[int] = None) -> list[EvaluationMetric]:
+                 test_data: tf.data.Dataset) -> list[EvaluationMetric]:
 
-        if tokenized_ds_item_list is None and self.dataloader is None:
-            raise ValueError(f"The evaluator has to be either initialized with a dataloader or "
-                             f"the tokenized_ds_item_list argument has to be given to use and apply "
-                             f"ranking evaluation metrics")
+        if self.dataloader is None and not self.sampler.is_fully_prepared():
+            raise ValueError("The evaluator has to be either initialized with a dataloader or "
+                             "a fully prepared sampler has to be given.")
 
         # iterate over the available batches
         for batch in tqdm.tqdm(test_data, total=test_data.cardinality().numpy()):
-            self.evaluate_batch(wrapper, batch, tokenized_ds_item_list)
+            self.evaluate_batch(wrapper, batch)
 
         return self._metrics
 
-    def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict, tokenized_item_list: list = None):
+    def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict):
         """
         Evaluation code inspired from
         https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run.py#L176
@@ -89,7 +95,7 @@ class BERT4RecEvaluator(BaseEvaluator):
                 remove_items.append(ground_truth)
 
                 # sample items to rank
-                sampled_rank_items = self.sampler.sample(tokenized_item_list, without=remove_items)
+                sampled_rank_items = self.sampler.sample(without=remove_items)
 
                 # append ground truth item id (since this is the one we actually want to rank)
                 sampled_rank_items.append(ground_truth)

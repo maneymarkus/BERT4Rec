@@ -28,9 +28,6 @@ class BaseEvaluator(abc.ABC):
                          "the sampler or provide a source list when calling the evaluate() method "
                          "of the evaluator.")
 
-        if dataloader is not None:
-            self.sampler.set_source(dataloader.create_item_list_tokenized())
-
         self._metrics = metrics
         self.dataloader = dataloader
         self.reset_metrics()
@@ -41,8 +38,7 @@ class BaseEvaluator(abc.ABC):
 
     @abc.abstractmethod
     def evaluate(self, wrapper: ModelWrapper,
-                 test_data: tf.data.Dataset,
-                 tokenized_ds_item_list: list[int] = None) \
+                 test_data: tf.data.Dataset) \
             -> list[EvaluationMetric]:
         """
         Evaluates a given model on the given test_data. The dataloader provides the method
@@ -50,7 +46,6 @@ class BaseEvaluator(abc.ABC):
 
         :param wrapper:
         :param test_data:
-        :param tokenized_ds_item_list:
         :return: dict containing the results of the metrics
         """
         pass
