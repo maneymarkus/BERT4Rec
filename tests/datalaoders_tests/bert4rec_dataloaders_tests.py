@@ -39,9 +39,9 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         self.assertIsInstance(ds_item, dict,
                               "A random item from a preprocessed dataset created by a BERT4rec dataloader "
                               f"method should be a dict, but is: {type(ds_item)}.")
-        self.assertEqual(len(ds_item), 7,
+        self.assertEqual(len(ds_item), 6,
                          "A random item from a preprocessed dataset BERT4Rec dataloader should be a dict with "
-                         f"two values, but this one actually has: {len(ds_item)} values.")
+                         f"6 values, but this one actually has: {len(ds_item)} values.")
         dict_keys = ["masked_lm_ids", "masked_lm_positions", "masked_lm_weights", "labels",
                      "input_word_ids", "input_mask"]
         self.assertListEqual(list(ds_item.keys()), dict_keys)
@@ -155,8 +155,12 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         input_word_ids = model_input["input_word_ids"]
         self.assertEqual(tf.rank(input_word_ids).numpy(), 2)
         self.assertEqual(len(input_word_ids[0]), self.dataloader._MAX_SEQ_LENGTH)
-        last_item = input_word_ids[0, -1].numpy()
-        self.assertEqual(last_item, self.dataloader._MASK_TOKEN_ID)
+        # convert input word ids to list and then remove all the "0" values
+        input_word_ids = input_word_ids.numpy().tolist()[0]
+        while 0 in input_word_ids:
+            input_word_ids.remove(0)
+        last_non_padding_item = input_word_ids[-1]
+        self.assertEqual(last_non_padding_item, self.dataloader._MASK_TOKEN_ID)
 
 
 class BERT4RecML1MDataloaderTests(BERT4RecDataloaderTests):

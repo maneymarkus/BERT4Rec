@@ -52,14 +52,8 @@ class DataloaderUtilsTest(tf.test.TestCase):
 
         # add special case 3
         special_subject_3 = random.randint(100, 200)
-        for _ in range(4):
+        for _ in range(3):
             subject_list.append(special_subject_3)
-            item_list.append(random.randint(0, 1000))
-
-        # add special case 4
-        special_subject_4 = random.randint(100, 200)
-        for _ in range(5):
-            subject_list.append(special_subject_4)
             item_list.append(random.randint(0, 1000))
 
         data = {
@@ -72,9 +66,9 @@ class DataloaderUtilsTest(tf.test.TestCase):
 
         df = pd.DataFrame(data)
 
-        train_df, val_df, test_df = utils.split_sequence_df(df, group_by_column, sequence_column)
-        # 4 special cases of which 3 should be filtered out
-        expected_df_size = df_size + 4 - 3
+        train_df, val_df, test_df = utils.split_sequence_df(df, group_by_column, sequence_column, min_sequence_length=3)
+        # 3 special cases
+        expected_df_size = df_size + 3
         self.assertEqual(train_df.shape[0], expected_df_size,
                          f"The generated train dataframe should have {expected_df_size} number of rows "
                          f"(one special case should be filtered out) but the actual number of rows is: "
@@ -87,26 +81,20 @@ class DataloaderUtilsTest(tf.test.TestCase):
                              f"The generated test dataframe should have less or an equal amount of rows "
                              f"compared to the generated validation dataframe ({val_df.shape[0]}) but actually has: "
                              f"{test_df.shape[0]}")
-        self.assertEqual(val_df.shape[0], expected_df_size,
-                         f"The generated validation dataframe should have {expected_df_size} number of rows "
-                         f"(three special cases should be filtered out) but the actual number of rows is: "
+        self.assertEqual(val_df.shape[0], expected_df_size - 2,
+                         f"The generated validation dataframe should have {expected_df_size - 2} number of rows "
+                         f"(two special cases should be filtered out) but the actual number of rows is: "
                          f"{val_df.shape[0]}")
-        self.assertEqual(test_df.shape[0], expected_df_size,
-                         f"The generated test dataframe should have {expected_df_size} number of rows "
-                         f"(three special cases should be filtered out) but the actual number of rows is: "
+        self.assertEqual(test_df.shape[0], expected_df_size - 2,
+                         f"The generated test dataframe should have {expected_df_size - 2} number of rows "
+                         f"(two special cases should be filtered out) but the actual number of rows is: "
                          f"{test_df.shape[0]}")
-        self.assertEqual(len(val_df["item"].iloc[-1]), 4,
-                         f"The last row of the generated validation dataframe should contain a sequence of length 4 "
+        self.assertEqual(len(val_df["item"].iloc[-1]), 2,
+                         f"The last row of the generated validation dataframe should contain a sequence of length 2 "
                          f"but actually has: {len(val_df['item'].iloc[-1])}.\nSequence:{val_df['item'].iloc[-1]}")
-        self.assertEqual(len(test_df["item"].iloc[-1]), 5,
-                         f"The last row of the generated test dataframe should contain a sequence of length 5 "
+        self.assertEqual(len(test_df["item"].iloc[-1]), 3,
+                         f"The last row of the generated test dataframe should contain a sequence of length 3 "
                          f"but actually has: {len(test_df['item'].iloc[-1])}.\nSequence:{test_df['item'].iloc[-1]}")
-
-        special_subject_4_data = train_df.loc[train_df["subject"] == special_subject_4]
-        self.assertEqual(len(special_subject_4_data["item"].iloc[0]), 3,
-                         f"The length of the fourth special item sequence in the training dataframe should be 3, "
-                         f"but actually is: {len(special_subject_4_data['item'])}.\n"
-                         f"Sequence:{special_subject_4_data['item']}")
 
     def test_convert_df_into_ds(self):
         ds_size = 5
