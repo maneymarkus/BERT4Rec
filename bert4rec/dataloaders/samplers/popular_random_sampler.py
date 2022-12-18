@@ -95,6 +95,9 @@ class PopularRandomSampler(BaseSampler):
         # sample size elements
         size = sample_size
 
+        # TODO: Sampling from a list with a bigger sample size than the remaining list
+        #  after removing `without` elements yields unexpected results
+
         # make sure there are no duplicates in without
         if without is not None:
             without = list(set(without))
