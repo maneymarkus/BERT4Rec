@@ -1,4 +1,7 @@
+from absl import logging
+import pandas as pd
 import tensorflow as tf
+import tqdm
 from typing import Union
 
 from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils as utils
@@ -30,18 +33,37 @@ class BERT4RecRedditDataloader(BERT4RecDataloader):
         return "reddit"
 
     def load_data_into_ds(self) -> tf.data.Dataset:
-        # df = reddit.load_reddit()
-        raise NotImplementedError("The Reddit dataset is not yet implemented to be utilised in conjunction "
-                                  "with the BERT4Rec model.")
+        df = reddit.load_reddit()
+        df = df.sort_values(by="created_utc")
+        df = df.groupby("author")
+        data = dict()
+        for user, u_data in tqdm.tqdm(df):
+            user_seq = u_data["parent_id"].to_list()
+            data[user] = user_seq
+        datatypes = ["str", "list"]
+        user_grouped_df = pd.DataFrame(list(data.items()), columns=["uid", "item_id"])
+        ds = utils.convert_df_to_ds(user_grouped_df, datatypes)
+        return ds
 
     def load_data_into_split_ds(self, duplication_factor: int = None) \
             -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
-        raise NotImplementedError("The Reddit dataset is not (yet) implemented to be utilised in conjunction "
-                                  "with the BERT4Rec model.")
 
-    def generate_vocab(self, source=None) -> True:
-        raise NotImplementedError("The Reddit dataset is not yet implemented to be utilised in conjunction "
-                                  "with the BERT4Rec model.")
+        super().load_data_into_split_ds(duplication_factor)
+        if duplication_factor is None:
+            duplication_factor = self.input_duplication_factor
+
+        df = reddit.load_reddit()
+        df = df.sort_values(by="created_utc")
+        datatypes = ["str", "list"]
+
+        return utils.split_df_into_three_ds(df, duplication_factor, "author", "parent_id", datatypes)
+
+    def generate_vocab(self, source=None, progress_bar: bool = True) -> True:
+        if source is None:
+            df = reddit.load_reddit()
+            source = set(df["parent_id"])
+        super().generate_vocab(source, progress_bar)
 
     def create_item_list(self) -> list:
-        pass
+        df = reddit.load_reddit()
+        return df["parent_id"].to_list()
