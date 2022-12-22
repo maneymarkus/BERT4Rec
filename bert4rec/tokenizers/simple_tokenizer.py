@@ -1,6 +1,7 @@
 from absl import logging
 from collections.abc import Iterable
 import numbers
+import os
 import pandas as pd
 import pathlib
 import tensorflow as tf
@@ -9,7 +10,6 @@ import tqdm
 from typing import Union
 
 import bert4rec.tokenizers.base_tokenizer as base_tokenizer
-import bert4rec.tokenizers.tokenizer_utils as utils
 
 
 class SimpleTokenizer(base_tokenizer.BaseTokenizer):
@@ -18,16 +18,15 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
     """
     def __init__(self, vocab_file_path: pathlib.Path = None, extensible: bool = True):
         super().__init__(vocab_file_path=vocab_file_path, extensible=extensible)
-        # initialize token map as list as this tokenizer uses numerical tokens and increases the token for each new
-        # entry
-        self._vocab = list()
+        # each new entry is the key and the value is the corresponding token
+        self._vocab = dict()
 
     @property
     def identifier(self):
         return "simple"
 
     def clear_vocab(self):
-        self._vocab = list()
+        self._vocab = dict()
         self._vocab_size = 0
 
     def tokenize(self, input, progress_bar: bool = False) -> Union[int, list[int], tf.RaggedTensor]:
@@ -72,12 +71,47 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
             raise ValueError("The provided argument is not of a supported type")
         return value
 
-    def import_vocab_from_file(self, vocab_file: pathlib.Path) -> None:
-        self._vocab = utils.import_num_vocab_from_file(vocab_file)
-        self._vocab_size = len(self._vocab)
+    def import_vocab_from_file(self, vocab_file: pathlib.Path) -> bool:
+        if not vocab_file.is_file():
+            raise RuntimeError(f'The vocab file does not exist (yet) or is not located at {vocab_file}.')
 
-    def export_vocab_to_file(self, file_path: pathlib.Path) -> None:
-        utils.export_num_vocab_to_file(file_path, self._vocab)
+        logging.info(f"Importing vocab from file {vocab_file} (current vocab property is cleared).")
+        self.clear_vocab()
+
+        with open(vocab_file, "rb") as file:
+            lines = file.readlines()
+            if len(lines) <= 0:
+                raise ValueError(f"The given vocab file ({vocab_file}) is empty.")
+            if "," not in lines[0].decode():
+                raise ValueError(f"The given vocab file ({vocab_file}) does not contain "
+                                 f"comma-separated values.")
+            if len(lines[0].decode().split(",")) != 2:
+                raise ValueError(f"The given vocab file ({vocab_file}) should contain "
+                                 f"comma-separated key-value-pairs per individual line.")
+
+            for line in lines:
+                line = line.decode()
+                line_parts = line.split(",")
+                self._vocab[line_parts[0]] = int(line_parts[1])
+
+        self._vocab_size = len(self._vocab.keys())
+
+        return True
+
+    def export_vocab_to_file(self, file_path: pathlib.Path) -> bool:
+        if len(self._vocab.keys()) <= 0:
+            raise ValueError("The vocab of the tokenizer is empty and therefore can't be written "
+                             "to a file.")
+
+        # generate comma seperated vocab file: key,token
+        with open(file_path, "wb") as file:
+            for key, token in self._vocab.items():
+                line = key + "," + str(token) + os.linesep
+                line = bytes(line, "utf-8")
+                file.write(line)
+
+        return True
+
 
     def _tokenize_string(self, string: str) -> int:
         """
@@ -90,13 +124,13 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
             string = string.decode("utf-8")
 
         if string in self._vocab:
-            token = self._vocab.index(string)
+            token = self._vocab[string]
         else:
             if not self._extensible:
                 raise RuntimeError(f"\"{string}\" is not known!")
-            self._vocab.append(string)
-            self._vocab_size = len(self._vocab)
-            token = self._vocab_size - 1
+            self._vocab[string] = self._vocab_size
+            token = self._vocab_size
+            self._vocab_size += 1
 
         return token
 
@@ -137,7 +171,8 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
             logging.warning(f"The given token {token} is not in the vocabulary.")
             value = None
         else:
-            value = self._vocab[token]
+            index = list(self._vocab.values()).index(token)
+            value = list(self._vocab.keys())[index]
         if drop_tokens and value in drop_tokens:
             value = None
         return value
