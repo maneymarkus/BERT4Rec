@@ -1,9 +1,13 @@
 from absl import logging
 import numpy as np
 import numpy.testing
+import os
 import pandas as pd
+import pathlib
 import random
+import tempfile
 import tensorflow as tf
+import uuid
 
 import bert4rec.tokenizers as tokenizers
 import tests.test_utils as utils
@@ -293,10 +297,64 @@ class SimpleTokenizersTest(tf.test.TestCase):
                          f"(so: {original_input[:-2]}) but actually returned: {detokenized}")
 
     def test_export_vocab(self):
-        pass
+        with self.assertRaises(ValueError):
+            _ = self.tokenizer.export_vocab_to_file(pathlib.Path("/" + str(uuid.uuid4())))
+
+        vocab_size = 25
+        vocab = utils.generate_random_word_list(size=vocab_size)
+        self.tokenizer.tokenize(vocab)
+        logging.debug("\nVocab:\n" + str(vocab))
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp.close()
+
+        path = pathlib.Path(tmp.name)
+        result = self.tokenizer.export_vocab_to_file(path)
+        self.assertTrue(result, "The export method should return True on success.")
+
+        threshold = round(vocab_size * 0.25)
+        with open(path, "rb") as vf:
+            line_counter = 1
+            for line in vf:
+                if line_counter > threshold:
+                    break
+                line = line.decode()
+                line_parts = line.strip().split(",")
+                word = line_parts[0]
+                token = int(line_parts[1])
+                expected_token = self.tokenizer.tokenize(word)
+                self.assertEqual(token, expected_token, f"The token saved to the vocab file "
+                                                        f"({token}) for the word {word} does not "
+                                                        f"match the token in the tokenizer vocab "
+                                                        f"property: {expected_token}")
+
+                line_counter += 1
+
+        os.remove(path)
 
     def test_import_vocab(self):
-        pass
+        with self.assertRaises(ValueError):
+            _ = self.tokenizer.export_vocab_to_file(pathlib.Path("/" + str(uuid.uuid4())))
+
+        vocab_size = 25
+        vocab = utils.generate_random_word_list(size=vocab_size)
+        self.tokenizer.tokenize(vocab)
+        expected_vocab_dict = self.tokenizer.get_vocab()
+        logging.debug("\nVocab:\n" + str(vocab))
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp.close()
+
+        path = pathlib.Path(tmp.name)
+        _ = self.tokenizer.export_vocab_to_file(path)
+
+        self.tokenizer = None
+        self.tokenizer = tokenizers.SimpleTokenizer()
+        self.tokenizer.import_vocab_from_file(path)
+        self.assertEqual(self.tokenizer.get_vocab(), expected_vocab_dict,
+                         f"The original vocab:\n{expected_vocab_dict}\n should be equal to "
+                         f"the new tokenizer with the imported vocab, but actually is:\n"
+                         f"{self.tokenizer.get_vocab()}")
+
+        os.remove(path)
 
 
 if __name__ == "__main__":
