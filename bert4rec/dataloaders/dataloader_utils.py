@@ -200,10 +200,8 @@ def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
     # create a list of indexes (item positions) in the sequence that can possibly be masked
     pos_indexes = [i for i, _ in enumerate(sequence_without_special_tokens)]
     random.shuffle(pos_indexes)
-    # only select num_to_predict - 1 indexes from pos_indexes and sort again
-    pos_indexes = pos_indexes[:num_to_predict-1]
-    # always mask the last element (train to predict)
-    pos_indexes.append(len(sequence) - 1)
+    # select num_to_predict indexes from pos_indexes and sort again
+    pos_indexes = pos_indexes[:num_to_predict]
     pos_indexes.sort()
 
     masked_lm_ids = []
