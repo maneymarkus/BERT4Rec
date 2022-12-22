@@ -137,10 +137,12 @@ def split_sequence_df(
 def split_df_into_three_ds(df: pd.DataFrame,
                            train_duplication_factor: int,
                            group_by_column: str,
-                           sequence_column: str) \
+                           sequence_column: str,
+                           datatypes: list = None) \
         -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
     train_df, val_df, test_df = split_sequence_df(df, group_by_column, sequence_column)
-    datatypes = ["int64", "list"]
+    if datatypes is None:
+        datatypes = ["int64", "list"]
     train_ds = convert_df_to_ds(train_df, datatypes)
     val_ds = convert_df_to_ds(val_df, datatypes)
     test_ds = convert_df_to_ds(test_df, datatypes)
