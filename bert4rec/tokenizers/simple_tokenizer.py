@@ -82,16 +82,16 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
             lines = file.readlines()
             if len(lines) <= 0:
                 raise ValueError(f"The given vocab file ({vocab_file}) is empty.")
-            if "," not in lines[0].decode():
+            if "|" not in lines[0].decode():
                 raise ValueError(f"The given vocab file ({vocab_file}) does not contain "
-                                 f"comma-separated values.")
-            if len(lines[0].decode().split(",")) != 2:
+                                 f"\"|\"-separated values.")
+            if len(lines[0].decode().split("|")) != 2:
                 raise ValueError(f"The given vocab file ({vocab_file}) should contain "
-                                 f"comma-separated key-value-pairs per individual line.")
+                                 f"\"|\"-separated key-value-pairs per individual line.")
 
             for line in lines:
                 line = line.decode()
-                line_parts = line.split(",")
+                line_parts = line.split("|")
                 self._vocab[line_parts[0]] = int(line_parts[1])
 
         self._vocab_size = len(self._vocab.keys())
@@ -106,7 +106,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         # generate comma seperated vocab file: key,token
         with open(file_path, "wb") as file:
             for key, token in self._vocab.items():
-                line = key + "," + str(token) + os.linesep
+                line = key + "|" + str(token) + os.linesep
                 line = bytes(line, "utf-8")
                 file.write(line)
 
