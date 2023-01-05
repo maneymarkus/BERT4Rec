@@ -60,10 +60,10 @@ class BaseTokenizerTests(tf.test.TestCase):
     def test_get_vocab(self):
         vocab_size = random.randint(50, 150)
         vocab = self.tokenizer.get_vocab()
-        self.assertEqual(vocab, [],
-                         f"The vocab returned by the tokenizer should be an empty list (in this case of "
-                         f"using the SimpleTokenizer) prior to filling it,"
-                         f"but actually is: {vocab} (and type: {type(vocab)})")
+        self.assertIsNotNone(vocab, "The vocab object returned by the tokenizer should be not None "
+                                    "after initializing it but actually is.")
+        self.assertEmpty(vocab, "The vocab object returned by the tokenizer should be empty "
+                                "prior to filling it.")
         self._fill_tokenizer_vocab(self.tokenizer, vocab_size=vocab_size)
         vocab = self.tokenizer.get_vocab()
         self.assertIsNotNone(vocab,
