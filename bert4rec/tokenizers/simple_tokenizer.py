@@ -20,6 +20,8 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         super().__init__(vocab_file_path=vocab_file_path, extensible=extensible)
         # each new entry is the key and the value is the corresponding token
         self._vocab = dict()
+        # The delimiter character is used when exporting/importing vocab from a file
+        self._delimiter = "|"
 
     @property
     def identifier(self):
@@ -82,16 +84,17 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
             lines = file.readlines()
             if len(lines) <= 0:
                 raise ValueError(f"The given vocab file ({vocab_file}) is empty.")
-            if "|" not in lines[0].decode():
+            if self._delimiter not in lines[0].decode():
                 raise ValueError(f"The given vocab file ({vocab_file}) does not contain "
-                                 f"\"|\"-separated values.")
-            if len(lines[0].decode().split("|")) != 2:
+                                 f"\"{self._delimiter}\"-separated values.")
+            if len(lines[0].decode().split(self._delimiter)) != 2:
                 raise ValueError(f"The given vocab file ({vocab_file}) should contain "
-                                 f"\"|\"-separated key-value-pairs per individual line.")
+                                 f"\"{self._delimiter}\"-separated key-value-pairs per "
+                                 f"individual line.")
 
             for line in lines:
                 line = line.decode()
-                line_parts = line.split("|")
+                line_parts = line.split(self._delimiter)
                 self._vocab[line_parts[0]] = int(line_parts[1])
 
         self._vocab_size = len(self._vocab.keys())
@@ -106,7 +109,7 @@ class SimpleTokenizer(base_tokenizer.BaseTokenizer):
         # generate comma seperated vocab file: key,token
         with open(file_path, "wb") as file:
             for key, token in self._vocab.items():
-                line = key + "|" + str(token) + os.linesep
+                line = key + self._delimiter + str(token) + os.linesep
                 line = bytes(line, "utf-8")
                 file.write(line)
 
