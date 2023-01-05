@@ -136,7 +136,7 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         self.assertIsInstance(ds_item, dict,
                               "A random item from a dataset created by a BERT4rec dataloader "
                               f"prepare_training() method should be a dict, but is: {type(ds_item)}.")
-        self.assertEqual(len(ds_item), 4,
+        self.assertEqual(len(ds_item), 3,
                          "A random item from a BERT4Rec dataloader prepare_training() should be a dict with "
                          f"two values, but this one actually has: {len(ds_item)} values.")
         dict_keys = {"labels", "input_word_ids", "input_mask"}
@@ -205,17 +205,14 @@ class BERT4RecML20MDataloaderTests(BERT4RecDataloaderTests):
         self.expected_vocab_size = 26733
 
 
-"""
-Not yet correctly implemented
-
 class BERT4RecRedditDataloaderTests(BERT4RecDataloaderTests):
     def setUp(self):
         super().setUp()
-        self.dataloader = dataloaders.BERT4RecML1MDataloader()
+        self.dataloader = dataloaders.BERT4RecRedditDataloader()
+        self.expected_vocab_size = 335424
 
     def test_load_data_into_ds(self, ds: tf.data.Dataset = None):
         super().test_load_data_into_ds(ds)
-"""
 
 
 class BERT4RecBeautyDataloaderTests(BERT4RecDataloaderTests):
