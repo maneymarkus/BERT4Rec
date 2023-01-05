@@ -256,7 +256,7 @@ class BERT4RecDataloader(BaseDataloader):
             output = tf.py_function(
                 self.call_feature_preprocessing,
                 [uid, sequence, False, finetuning],
-                [tf.int64, tf.int64, tf.int64, tf.int64]
+                [tf.int64, tf.int64, tf.int64]
             )
 
         processed_features["labels"] = output[0]
