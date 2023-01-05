@@ -17,7 +17,7 @@ class SimpleTokenizersTest(tf.test.TestCase):
     def setUp(self) -> None:
         super(SimpleTokenizersTest, self).setUp()
         logging.set_verbosity(logging.DEBUG)
-        self.tokenizer = tokenizers.get("simple")
+        self.tokenizer = tokenizers.SimpleTokenizer()
 
     def tearDown(self):
         self.tokenizer = None
@@ -318,7 +318,7 @@ class SimpleTokenizersTest(tf.test.TestCase):
                 if line_counter > threshold:
                     break
                 line = line.decode()
-                line_parts = line.strip().split(",")
+                line_parts = line.strip().split(self.tokenizer._delimiter)
                 word = line_parts[0]
                 token = int(line_parts[1])
                 expected_token = self.tokenizer.tokenize(word)
