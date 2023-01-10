@@ -14,6 +14,7 @@ zstandard = "*"
 tensorflow-ranking = "*"
 tensorboard = "==2.10.0"
 tensorflow-estimator = "==2.10.0"
+tf-models-official = "*"
 
 [dev-packages]
 coverage = "*"
