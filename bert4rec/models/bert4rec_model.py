@@ -1,10 +1,11 @@
 from absl import logging
 import copy
 import tensorflow as tf
+import tensorflow_models as tfm
 from typing import Optional
 
 from bert4rec.dataloaders.bert4rec_dataloader import BERT4RecDataloader
-from bert4rec.models.components import layers, networks
+from bert4rec.models.components import networks
 
 _ENCODER_CONFIG_FILE_NAME = "encoder_config.json"
 _META_CONFIG_FILE_NAME = "meta_config.json"
@@ -72,7 +73,7 @@ class BERT4RecModel(tf.keras.Model):
 
         inputs = copy.copy(encoder.inputs)
 
-        self.masked_lm = customized_masked_lm or layers.MaskedLM(
+        self.masked_lm = customized_masked_lm or tfm.nlp.layers.MaskedLM(
             self.encoder.get_embedding_table(),
             activation=mlm_activation,
             initializer=mlm_initializer,
@@ -97,7 +98,8 @@ class BERT4RecModel(tf.keras.Model):
                 # match the shape (or simply the length) of the vocabulary
                 dense_shape=[self.vocab_size]
             )
-            self.prediction_mask = tf.sparse.to_dense(sparse_mask)
+            #self.prediction_mask = tf.sparse.to_dense(sparse_mask)
+            self.prediction_mask = None
 
         self.inputs = inputs
 

@@ -4,23 +4,20 @@
 from typing import Any, Callable, Optional, Union
 from absl import logging
 import tensorflow as tf
-
-from bert4rec.models.components import component_utils
-from bert4rec.models.components import layers
+import tensorflow_models as tfm
 
 _Initializer = Union[str, tf.keras.initializers.Initializer]
 _Activation = Union[str, Callable[..., Any]]
 
 
 class Bert4RecEncoder(tf.keras.layers.Layer):
-#class BertEncoderV2(tf.keras.models.Model):
     """Bi-directional Transformer-based encoder network.
 
     This network implements a bi-directional Transformer-based encoder as
-    described in "BERT: Pre-training of Deep Bidirectional Transformers for
-    Language Understanding" (https://arxiv.org/abs/1810.04805). It includes the
-    embedding lookups and transformer layers, but not the masked language model
-    or classification task networks.
+    described in "BERT4Rec: Sequential Recommendation with Bidirectional Encoder
+    Representations from Transformer" (https://arxiv.org/abs/1810.04805).
+    It includes the embedding lookups (but no type embeddings) and transformer
+    layers, but not the masked language model or classification task networks.
 
     The default values for this object are taken from the BERT-Base implementation
     in "BERT: Pre-training of Deep Bidirectional Transformers for Language
@@ -81,19 +78,6 @@ class Bert4RecEncoder(tf.keras.layers.Layer):
             norm_first: bool = False,
             with_dense_inputs: bool = False,
             **kwargs):
-        # Pops kwargs that are used in V1 implementation.
-        if 'dict_outputs' in kwargs:
-            kwargs.pop('dict_outputs')
-        if 'return_all_encoder_outputs' in kwargs:
-            kwargs.pop('return_all_encoder_outputs')
-        if 'intermediate_size' in kwargs:
-            inner_dim = kwargs.pop('intermediate_size')
-        if 'activation' in kwargs:
-            inner_activation = kwargs.pop('activation')
-        if 'dropout_rate' in kwargs:
-            output_dropout = kwargs.pop('dropout_rate')
-        if 'attention_dropout_rate' in kwargs:
-            attention_dropout = kwargs.pop('attention_dropout_rate')
         super().__init__(**kwargs)
 
         activation = tf.keras.activations.get(inner_activation)
@@ -103,16 +87,16 @@ class Bert4RecEncoder(tf.keras.layers.Layer):
             embedding_width = hidden_size
 
         if embedding_layer is None:
-            self._embedding_layer = layers.OnDeviceEmbedding(
+            self._embedding_layer = tfm.nlp.layers.OnDeviceEmbedding(
                 vocab_size=vocab_size,
                 embedding_width=embedding_width,
-                initializer=component_utils.clone_initializer(initializer),
+                initializer=tfm.utils.clone_initializer(initializer),
                 name='word_embeddings')
         else:
             self._embedding_layer = embedding_layer
 
-        self._position_embedding_layer = layers.PositionEmbedding(
-            initializer=component_utils.clone_initializer(initializer),
+        self._position_embedding_layer = tfm.nlp.layers.PositionEmbedding(
+            initializer=tfm.utils.clone_initializer(initializer),
             max_length=max_sequence_length,
             name='position_embedding')
 
@@ -130,14 +114,14 @@ class Bert4RecEncoder(tf.keras.layers.Layer):
                 '...x,xy->...y',
                 output_shape=hidden_size,
                 bias_axes='y',
-                kernel_initializer=component_utils.clone_initializer(initializer),
+                kernel_initializer=tfm.utils.clone_initializer(initializer),
                 name='embedding_projection')
 
         self._transformer_layers = []
-        self._attention_mask_layer = layers.SelfAttentionMask(
+        self._attention_mask_layer = tfm.nlp.layers.SelfAttentionMask(
             name='self_attention_mask')
         for i in range(num_layers):
-            layer = layers.TransformerEncoderBlock(
+            layer = tfm.nlp.layers.TransformerEncoderBlock(
                 num_attention_heads=num_attention_heads,
                 inner_dim=inner_dim,
                 inner_activation=activation,
@@ -145,14 +129,14 @@ class Bert4RecEncoder(tf.keras.layers.Layer):
                 attention_dropout=attention_dropout,
                 norm_first=norm_first,
                 output_range=output_range if i == num_layers - 1 else None,
-                kernel_initializer=component_utils.clone_initializer(initializer),
+                kernel_initializer=tfm.utils.clone_initializer(initializer),
                 name='transformer/layer_%d' % i)
             self._transformer_layers.append(layer)
 
         self._pooler_layer = tf.keras.layers.Dense(
             units=hidden_size,
             activation='tanh',
-            kernel_initializer=component_utils.clone_initializer(initializer),
+            kernel_initializer=tfm.utils.clone_initializer(initializer),
             name='pooler_transform')
 
         self._config = {

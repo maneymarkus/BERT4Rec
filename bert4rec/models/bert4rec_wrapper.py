@@ -2,9 +2,10 @@ from absl import logging
 import json
 import pathlib
 import tensorflow as tf
+import tensorflow_models as tfm
 from typing import Union
 
-from bert4rec.models.components import layers, networks, component_utils
+from bert4rec.models.components import networks
 from bert4rec.models.bert4rec_model import BERT4RecModel
 from bert4rec.models.model_wrapper import ModelWrapper
 import bert4rec.models.model_utils as utils
@@ -90,14 +91,12 @@ class BERT4RecModelWrapper(ModelWrapper):
         loaded_bert = tf.keras.models.load_model(save_path, custom_objects={
             "BERT4RecModel": BERT4RecModel,
             "Bert4RecEncoder": networks.Bert4RecEncoder,
-            "BertEncoder": networks.BertEncoder,
-            "OnDeviceEmbedding": layers.OnDeviceEmbedding,
-            "PositionEmbedding": layers.PositionEmbedding,
-            "SelfAttentionMask": layers.SelfAttentionMask,
-            "TransformerEncoderBlock": layers.TransformerEncoderBlock,
-            "RelativePositionEmbedding": layers.RelativePositionEmbedding,
-            "RelativePositionBias": layers.RelativePositionBias,
-            "approx_gelu": component_utils.approx_gelu,
+            "OnDeviceEmbedding": tfm.nlp.layers.OnDeviceEmbedding,
+            "PositionEmbedding": tfm.nlp.layers.PositionEmbedding,
+            "SelfAttentionMask": tfm.nlp.layers.SelfAttentionMask,
+            "TransformerEncoderBlock": tfm.nlp.layers.TransformerEncoderBlock,
+            "RelativePositionEmbedding": tfm.nlp.layers.RelativePositionEmbedding,
+            "RelativePositionBias": tfm.nlp.layers.RelativePositionBias,
             "AdamWeightDecay": optimizers.AdamWeightDecay,
             "masked_accuracy": trainer_utils.masked_accuracy,
             "MaskedSparseCategoricalCrossentropy": trainer_utils.MaskedSparseCategoricalCrossentropy,
