@@ -78,6 +78,19 @@ class Bert4RecEncoder(tf.keras.layers.Layer):
             norm_first: bool = False,
             with_dense_inputs: bool = False,
             **kwargs):
+        # Pops kwargs that are used in V1 bert encoder implementation.
+        if 'dict_outputs' in kwargs:
+            kwargs.pop('dict_outputs')
+        if 'return_all_encoder_outputs' in kwargs:
+            kwargs.pop('return_all_encoder_outputs')
+        if 'intermediate_size' in kwargs:
+            inner_dim = kwargs.pop('intermediate_size')
+        if 'activation' in kwargs:
+            inner_activation = kwargs.pop('activation')
+        if 'dropout_rate' in kwargs:
+            output_dropout = kwargs.pop('dropout_rate')
+        if 'attention_dropout_rate' in kwargs:
+            attention_dropout = kwargs.pop('attention_dropout_rate')
         super().__init__(**kwargs)
 
         activation = tf.keras.activations.get(inner_activation)
