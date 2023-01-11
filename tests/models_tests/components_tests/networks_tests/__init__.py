@@ -1,0 +1,1 @@
+from .bert4rec_encoder_tests import Bert4RecEncoderTest

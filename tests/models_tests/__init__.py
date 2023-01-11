@@ -8,3 +8,4 @@ When extensive changes have been made to the source files, the integration can m
 from .bert4rec_wrapper_tests import BERT4RecWrapperTests
 from .bert_model_tests import BERTModelTests
 from .model_utils_tests import ModelUtilsTests
+from .components_tests import Bert4RecEncoderTest
