@@ -25,6 +25,6 @@ python_version = "3.10"
 
 [scripts]
 tests = "coverage run -m unittest discover -v -s tests"
-coverage = "coverage report -m"
+coverage = "coverage report -m -i"
 lint = "pylint --recursive=y ."
 lint-errors-only = "pylint -E --recursive=y ."
