@@ -32,7 +32,9 @@ class BaseTrainer(abc.ABC):
               train_ds: tf.data.Dataset,
               val_ds: tf.data.Dataset,
               checkpoint_path: pathlib.Path = None,
-              epochs: int = 50):
+              epochs: int = 50,
+              steps_per_epoch: int = None,
+              validation_steps: int = None):
         pass
 
     def update_wrapper_meta_info(self, wrapper, dataloader: BaseDataloader):
