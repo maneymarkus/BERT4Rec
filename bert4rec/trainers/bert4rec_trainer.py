@@ -38,7 +38,9 @@ class BERT4RecTrainer(BaseTrainer):
               train_ds: tf.data.Dataset,
               val_ds: tf.data.Dataset,
               checkpoint_path: pathlib.Path = None,
-              epochs: int = 50):
+              epochs: int = 50,
+              steps_per_epoch: int = None,
+              validation_steps: int = None):
 
         if checkpoint_path:
             model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -60,7 +62,9 @@ class BERT4RecTrainer(BaseTrainer):
         history = self.model.fit(x=train_ds,
                                  validation_data=val_ds,
                                  epochs=epochs,
-                                 callbacks=self.callbacks)
+                                 callbacks=self.callbacks,
+                                 steps_per_epoch=steps_per_epoch,
+                                 validation_steps=validation_steps)
         return history
 
     def validate(self):
