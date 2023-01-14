@@ -37,6 +37,7 @@ def convert_df_to_ds(df: pd.DataFrame, datatypes: list[str] = None):
     ds = convert_column_to_ds(df.iloc[:, 0], datatype)
 
     logging.info("Start to convert dataframe to dataset")
+    datasets = (ds,)
     for _, column in df.iteritems():
         if c_index == 0:
             c_index += 1
@@ -46,8 +47,9 @@ def convert_df_to_ds(df: pd.DataFrame, datatypes: list[str] = None):
             datatype = datatypes[c_index]
         part_ds = convert_column_to_ds(column, datatype)
 
-        ds = tf.data.Dataset.zip((ds, part_ds))
+        datasets += (part_ds,)
         c_index += 1
+    ds = tf.data.Dataset.zip(datasets)
     return ds
 
 
