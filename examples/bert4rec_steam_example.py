@@ -7,7 +7,6 @@ from bert4rec.evaluation import BERT4RecEvaluator
 from bert4rec.models.components import networks
 from bert4rec.models import BERT4RecModel, BERT4RecModelWrapper, model_utils
 from bert4rec import trainers
-from bert4rec.trainers import optimizers
 import bert4rec.utils as utils
 
 
@@ -21,11 +20,11 @@ def main():
 
     dataloader_factory = get_dataloader_factory("bert4rec")
     dataloader_config = {
-        "input_duplication_factor": 2
+        "input_duplication_factor": 5
     }
     dataloader = dataloader_factory.create_steam_dataloader(**dataloader_config)
     dataloader.generate_vocab()
-    train_ds, val_ds, test_ds = dataloader.prepare_training(finetuning_split=0.15)
+    train_ds, val_ds, test_ds = dataloader.prepare_training()
     tokenizer = dataloader.get_tokenizer()
 
     # load a specific config
@@ -47,25 +46,17 @@ def main():
     # for the created checkpoint files
     checkpoint_path = save_path.joinpath("checkpoints")
 
-    train_batches = dataloader_utils.make_batches(train_ds, batch_size=256, reshuffle_each_iteration=True)
-    val_batches = dataloader_utils.make_batches(val_ds, batch_size=256, reshuffle_each_iteration=True)
+    train_batches = dataloader_utils.make_batches(train_ds, batch_size=256)
+    val_batches = dataloader_utils.make_batches(val_ds, batch_size=256)
     test_batches = dataloader_utils.make_batches(test_ds, batch_size=256)
 
-    # TODO: save and load dataset to save time using the official tf.data.Dataset.save() and .load() api
-    # not urgent anymore as tensors tend to have a much faster computation time (especially concerning
-    # shuffle buffer filling) than ragged tensors
-    # See: https://stackoverflow.com/a/67781967
-
-    # set up a training loop callback
-    early_stopping_callback = tf.keras.callbacks.EarlyStopping(
-        monitor="val_loss",
-        patience=15,
-        verbose=1,
-    )
-    trainer.append_callback(early_stopping_callback)
-
     # train the model
-    trainer.train(train_batches, val_batches, checkpoint_path=checkpoint_path, epochs=EPOCHS)
+    trainer.train(train_batches,
+                  val_batches,
+                  checkpoint_path=checkpoint_path,
+                  epochs=EPOCHS,
+                  steps_per_epoch=500,
+                  validation_steps=10000)
     trainer.update_wrapper_meta_info(model_wrapper, dataloader)
 
     evaluator = BERT4RecEvaluator(dataloader=dataloader)
