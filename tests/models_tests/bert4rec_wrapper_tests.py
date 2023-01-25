@@ -179,7 +179,7 @@ class BERT4RecWrapperTests(tf.test.TestCase):
             encoder_input = el
 
         # use just one generic item list for ranking for all masked tokens
-        rank_items_1 = [random.randint(0, vocab_size) for _ in range(number_rank_items)]
+        rank_items_1 = [random.randint(0, vocab_size - 1) for _ in range(number_rank_items)]
 
         rankings_1, probabilities_1 = wrapper.rank(encoder_input,
                                                    rank_items_1,
@@ -205,7 +205,7 @@ class BERT4RecWrapperTests(tf.test.TestCase):
         # use individual ranking lists for each token -> shape of rank_items list: (batch, tokens, rank_items)
         rank_items_2 = [
             [
-                [random.randint(0, vocab_size) for _ in range(random.randint(3, 10))]
+                [random.randint(0, vocab_size - 1) for _ in range(random.randint(3, 10))]
                 for _ in range(len(encoder_input["masked_lm_positions"][0]))
             ]
         ]
