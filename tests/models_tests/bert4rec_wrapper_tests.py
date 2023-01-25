@@ -4,7 +4,7 @@ import random
 import tempfile
 import tensorflow as tf
 
-from bert4rec.dataloaders import dataloader_utils
+from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils
 from bert4rec.models import BERT4RecModel, BERT4RecModelWrapper
 from bert4rec.models.bert4rec_wrapper import _META_CONFIG_FILE_NAME, _TOKENIZER_VOCAB_FILE_NAME
 from bert4rec.models.components import networks
@@ -24,8 +24,17 @@ class BERT4RecWrapperTests(tf.test.TestCase):
         super().tearDown()
         self.optimizer = None
 
-    def _build_model(self, vocab_size: int, optimizer: tf.keras.optimizers.Optimizer = None):
-        bert_encoder = networks.Bert4RecEncoder(vocab_size=vocab_size)
+    def _build_model(self,
+                     vocab_size: int,
+                     optimizer: tf.keras.optimizers.Optimizer = None,
+                     max_sequence_len: int = 10):
+        # instantiate just a very small encoder for testing purposes
+        bert_encoder = networks.Bert4RecEncoder(vocab_size=vocab_size,
+                                                hidden_size=16,
+                                                num_layers=2,
+                                                max_sequence_length=max_sequence_len,
+                                                inner_dim=16,
+                                                num_attention_heads=2)
         bert_model = BERT4RecModel(bert_encoder)
         if optimizer is None:
             optimizer = self.optimizer
@@ -37,16 +46,75 @@ class BERT4RecWrapperTests(tf.test.TestCase):
         _ = bert_model(bert_model.inputs)
         return bert_model
 
-    def test_load_model(self):
+    def test_save_model(self):
         ds_size = 1
         vocab_size = 200
+        max_sequence_length = 10
         tmpdir = tempfile.TemporaryDirectory()
         save_path = pathlib.Path(tmpdir.name)
 
-        bert_model = self._build_model(vocab_size)
+        bert_model = self._build_model(vocab_size, max_sequence_len=max_sequence_length)
         wrapper = BERT4RecModelWrapper(bert_model)
 
-        dataset, dataloader = test_utils.generate_random_sequence_dataset(ds_size)
+        # makes sure the weights are built
+        _ = bert_model(bert_model.inputs)
+
+        # should throw an error when trying to save a not fully initialized models
+        # i.e. models can't be saved without at least one training step as this builds the loss and metrics
+        with self.assertRaises(RuntimeError):
+            wrapper.save(save_path)
+
+        dataloader = BERT4RecDataloader(max_seq_len=max_sequence_length, max_predictions_per_seq=5)
+        dataset, _ = test_utils.generate_random_sequence_dataset(ds_size, dataloader=dataloader)
+        batches = dataloader_utils.make_batches(dataset)
+        random_input = None
+        for el in batches.take(1):
+            random_input = el
+
+        # the one train step to build the compiled metrics and loss
+        bert_model.train_step(random_input)
+
+        # save only models and meta config
+        wrapper.save(save_path)
+        assets_path = save_path.joinpath("assets")
+        keras_metadata_path = save_path.joinpath("keras_metadata.pb")
+        meta_config_path = save_path.joinpath(_META_CONFIG_FILE_NAME)
+        saved_model_path = save_path.joinpath("saved_model.pb")
+        variables_path = save_path.joinpath("variables")
+        self.assertTrue(assets_path.is_dir(),
+                        f"the saved model directory should contain an 'assets' directory.")
+        self.assertTrue(keras_metadata_path.is_file(),
+                        f"the saved model directory should contain a 'keras_metadata.pb' file.")
+        self.assertTrue(meta_config_path.is_file(),
+                        f"the saved model directory should contain a '{_META_CONFIG_FILE_NAME}' file.")
+        self.assertTrue(saved_model_path,
+                        f"the saved model directory should contain a 'saved_model.pb' file.")
+        self.assertTrue(variables_path.is_dir(),
+                        f"the saved model directory should contain a 'variables' directory.")
+
+        tokenizer = tokenizers.get()
+        # makes sure, vocab has at least one entry
+        tokenizer.tokenize("test")
+
+        # save models and tokenizer vocab and meta config
+        wrapper.save(save_path, tokenizer)
+        vocab_path = save_path.joinpath(_TOKENIZER_VOCAB_FILE_NAME)
+
+        self.assertTrue(vocab_path.is_file(),
+                        f"the saved model directory should contain a '{_TOKENIZER_VOCAB_FILE_NAME}' file.")
+
+    def test_load_model(self):
+        ds_size = 1
+        vocab_size = 200
+        max_sequence_length = 10
+        tmpdir = tempfile.TemporaryDirectory()
+        save_path = pathlib.Path(tmpdir.name)
+
+        bert_model = self._build_model(vocab_size, max_sequence_len=max_sequence_length)
+        wrapper = BERT4RecModelWrapper(bert_model)
+
+        dataloader = BERT4RecDataloader(max_seq_len=max_sequence_length, max_predictions_per_seq=5)
+        dataset, _ = test_utils.generate_random_sequence_dataset(ds_size, dataloader=dataloader)
         batches = dataloader_utils.make_batches(dataset)
         random_input = None
         for el in batches.take(1):
@@ -90,78 +158,24 @@ class BERT4RecWrapperTests(tf.test.TestCase):
                          f"Reloading the tokenizer along with the saved model should restore its vocab. "
                          f"Expected vocab size: 1. Restored vocab size: {tokenizer.get_vocab_size()}")
 
-    def test_save_model(self):
-        ds_size = 1
-        vocab_size = 200
-        tmpdir = tempfile.TemporaryDirectory()
-        save_path = pathlib.Path(tmpdir.name)
-
-        bert_model = self._build_model(vocab_size)
-        wrapper = BERT4RecModelWrapper(bert_model)
-
-        # makes sure the weights are built
-        _ = bert_model(bert_model.inputs)
-
-        # should throw an error when trying to save a not fully initialized models
-        # i.e. models can't be saved without at least one training step as this builds the loss and metrics
-        with self.assertRaises(RuntimeError):
-            wrapper.save(save_path)
-
-        dataset, dataloader = test_utils.generate_random_sequence_dataset(ds_size)
-        batches = dataloader_utils.make_batches(dataset)
-        random_input = None
-        for el in batches.take(1):
-            random_input = el
-
-        # the one train step to build the compiled metrics and loss
-        bert_model.train_step(random_input)
-
-        # save only models and meta config
-        wrapper.save(save_path)
-        assets_path = save_path.joinpath("assets")
-        keras_metadata_path = save_path.joinpath("keras_metadata.pb")
-        meta_config_path = save_path.joinpath(_META_CONFIG_FILE_NAME)
-        saved_model_path = save_path.joinpath("saved_model.pb")
-        variables_path = save_path.joinpath("variables")
-        self.assertTrue(assets_path.is_dir(),
-                        f"the saved model directory should contain an 'assets' directory.")
-        self.assertTrue(keras_metadata_path.is_file(),
-                        f"the saved model directory should contain a 'keras_metadata.pb' file.")
-        self.assertTrue(meta_config_path.is_file(),
-                        f"the saved model directory should contain a '{_META_CONFIG_FILE_NAME}' file.")
-        self.assertTrue(saved_model_path,
-                        f"the saved model directory should contain a 'saved_model.pb' file.")
-        self.assertTrue(variables_path.is_dir(),
-                        f"the saved model directory should contain a 'variables' directory.")
-
-        tokenizer = tokenizers.get()
-        # makes sure, vocab has at least one entry
-        tokenizer.tokenize("test")
-
-        # save models and tokenizer vocab and meta config
-        wrapper.save(save_path, tokenizer)
-        vocab_path = save_path.joinpath(_TOKENIZER_VOCAB_FILE_NAME)
-
-        self.assertTrue(vocab_path.is_file(),
-                        f"the saved model directory should contain a '{_TOKENIZER_VOCAB_FILE_NAME}' file.")
-
     def test_rank_items(self):
         ds_size = 1
         number_rank_items = 7
-        sequence_length = 50
+        max_sequence_length = 50
 
-        prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size)
-        prepared_batches = dataloader_utils.make_batches(prepared_ds)
+        dataloader = BERT4RecDataloader(max_seq_len=max_sequence_length, max_predictions_per_seq=5)
+        dataset, _ = test_utils.generate_random_sequence_dataset(ds_size, dataloader=dataloader)
+        batches = dataloader_utils.make_batches(dataset)
         vocab_size = dataloader.tokenizer.get_vocab_size()
 
-        bert_model = self._build_model(vocab_size)
+        bert_model = self._build_model(vocab_size, max_sequence_len=max_sequence_length)
         wrapper = BERT4RecModelWrapper(bert_model)
 
         # initialize weights
         _ = bert_model(bert_model.inputs)
 
         encoder_input = None
-        for el in prepared_batches.take(1):
+        for el in batches.take(1):
             encoder_input = el
 
         # use just one generic item list for ranking for all masked tokens
