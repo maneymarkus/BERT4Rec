@@ -48,11 +48,14 @@ class BERTModelTests(tf.test.TestCase):
         max_predictions = 5
 
         dataloader = BERT4RecDataloader(max_seq_length, max_predictions)
-        model = self._build_model(vocab_size, hidden_size, num_layers)
 
         ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size,
                                                                      vocab_size=vocab_size,
                                                                      dataloader=dataloader)
+
+        # overwrite vocab size, as dataloader might add special tokens to vocab size
+        vocab_size = dataloader.get_tokenizer().get_vocab_size()
+        model = self._build_model(vocab_size, hidden_size, num_layers)
 
         ds_batches = dataloader_utils.make_batches(ds, batch_size=batch_size)
 
