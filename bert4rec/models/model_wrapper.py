@@ -4,14 +4,30 @@ from typing import Union
 
 
 class ModelWrapper(abc.ABC):
+    """
+    The model wrapper class is supposed to provide additional (mostly administrative
+    like extended saving and loading functionality) functionality for the wrapped model.
+    It basically depicts a custom decorator.
+    The custom_objects class variable corresponds to the custom_objects argument in the
+    TensorFlow Keras load_model() method
+    (See: https://www.tensorflow.org/api_docs/python/tf/keras/models/load_model#args_1)
+    """
+
+    _model: tf.keras.Model = None
+    _custom_objects: dict = {}
+
     def __init__(self, model: tf.keras.Model):
-        self.model = model
+        self._model = model
         self._meta_config = {
             "model": model.name,
             "tokenizer": None,
             "last_trained": None,
             "trained_on_dataset": None,
         }
+
+    @property
+    def model(self):
+        return self._model
 
     def get_meta_config(self) -> dict:
         return self._meta_config

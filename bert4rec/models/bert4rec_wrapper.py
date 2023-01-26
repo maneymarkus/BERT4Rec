@@ -19,13 +19,27 @@ _MODEL_WEIGHTS_FILES_PREFIX = "model_weights"
 
 
 class BERT4RecModelWrapper(ModelWrapper):
-    def __init__(self, bert_model: BERT4RecModel):
-        super().__init__(bert_model)
-        self.bert_model = bert_model
+
+    _custom_objects: dict = {
+            "BERT4RecModel": BERT4RecModel,
+            "Bert4RecEncoder": networks.Bert4RecEncoder,
+            "OnDeviceEmbedding": tfm.nlp.layers.OnDeviceEmbedding,
+            "PositionEmbedding": tfm.nlp.layers.PositionEmbedding,
+            "SelfAttentionMask": tfm.nlp.layers.SelfAttentionMask,
+            "TransformerEncoderBlock": tfm.nlp.layers.TransformerEncoderBlock,
+            "RelativePositionEmbedding": tfm.nlp.layers.RelativePositionEmbedding,
+            "RelativePositionBias": tfm.nlp.layers.RelativePositionBias,
+            "AdamWeightDecay": optimizers.AdamWeightDecay,
+            "masked_accuracy": trainer_utils.masked_accuracy,
+            "MaskedSparseCategoricalCrossentropy": trainer_utils.MaskedSparseCategoricalCrossentropy,
+        }
+
+    def __init__(self, model: BERT4RecModel):
+        super().__init__(model)
         self.update_meta(
             {
                 "model": "BERT4Rec",
-                "encoder_config": self.bert_model.encoder.get_config()
+                "encoder_config": self.model.encoder.get_config()
             }
         )
 
@@ -46,16 +60,16 @@ class BERT4RecModelWrapper(ModelWrapper):
         """
         save_path = utils.determine_model_path(save_path, mode)
 
-        if self.bert_model.compiled_loss is None:
+        if self.model.compiled_loss is None:
             raise RuntimeError("The model can't be saved without a loss. The model needs to be compiled first.")
 
-        if self.bert_model.compiled_metrics and not self.bert_model.compiled_metrics._built:
+        if self.model.compiled_metrics and not self.model.compiled_metrics._built:
             raise RuntimeError("The model can't be saved yet, as it is not fully instantiated and will "
                                "throw an error during saving. See model docs for more information.")
 
-        logging.info(f"Saving {self.bert_model} to {save_path}")
+        logging.info(f"Saving {self.model} to {save_path}")
 
-        self.bert_model.save(save_path)
+        self.model.save(save_path)
 
         if tokenizer:
             tokenizer.export_vocab_to_file(save_path.joinpath(_TOKENIZER_VOCAB_FILE_NAME))
@@ -88,19 +102,7 @@ class BERT4RecModelWrapper(ModelWrapper):
         logging.info(f"Loading model from {save_path}")
 
         loaded_assets = dict()
-        loaded_bert = tf.keras.models.load_model(save_path, custom_objects={
-            "BERT4RecModel": BERT4RecModel,
-            "Bert4RecEncoder": networks.Bert4RecEncoder,
-            "OnDeviceEmbedding": tfm.nlp.layers.OnDeviceEmbedding,
-            "PositionEmbedding": tfm.nlp.layers.PositionEmbedding,
-            "SelfAttentionMask": tfm.nlp.layers.SelfAttentionMask,
-            "TransformerEncoderBlock": tfm.nlp.layers.TransformerEncoderBlock,
-            "RelativePositionEmbedding": tfm.nlp.layers.RelativePositionEmbedding,
-            "RelativePositionBias": tfm.nlp.layers.RelativePositionBias,
-            "AdamWeightDecay": optimizers.AdamWeightDecay,
-            "masked_accuracy": trainer_utils.masked_accuracy,
-            "MaskedSparseCategoricalCrossentropy": trainer_utils.MaskedSparseCategoricalCrossentropy,
-        })
+        loaded_bert = tf.keras.models.load_model(save_path, custom_objects=cls._custom_objects)
 
         wrapper = cls(loaded_bert)
         loaded_assets["model_wrapper"] = wrapper
