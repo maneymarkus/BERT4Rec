@@ -62,7 +62,7 @@ def main():
 
     evaluator = BERT4RecEvaluator(dataloader=dataloader)
 
-    metrics_objects = evaluator.evaluate(model_wrapper, test_batches)
+    metrics_objects = evaluator.evaluate(model, test_batches)
     evaluator.save_results(save_path)
     metrics = evaluator.get_metrics_results()
     print(metrics)

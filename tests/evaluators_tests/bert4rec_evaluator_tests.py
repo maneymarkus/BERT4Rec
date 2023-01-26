@@ -21,21 +21,20 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         super().tearDown()
         pass
 
-    def _create_model_wrapper(self, config_identifier: str = "ml-1m_128.json", vocab_size: int = 1000):
+    def _create_model(self, config_identifier: str = "ml-1m_128.json", vocab_size: int = 1000):
         # load a specific config
         config_path = utils.get_project_root().joinpath(f"config/bert4rec_train_configs/{config_identifier}")
         config = utils.load_json_config(config_path)
 
         bert_encoder = networks.Bert4RecEncoder(vocab_size, **config)
         model = BERT4RecModel(bert_encoder)
-        model_wrapper = BERT4RecModelWrapper(model)
         # makes sure the weights are built
         _ = model(model.inputs)
 
-        return model_wrapper
+        return model
 
     def test_evaluate_batch(self):
-        ds_size = 1000
+        ds_size = 500
         max_seq_len = 10
 
         prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
@@ -49,9 +48,9 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         evaluator = evaluation.get(sampler=sampler)
 
         config_id = "ml-1m_128.json"
-        model_wrapper = self._create_model_wrapper(config_id, vocab_size)
+        model = self._create_model(config_id, vocab_size)
 
-        metric_objects = evaluator.evaluate(model_wrapper, prepared_batches)
+        metric_objects = evaluator.evaluate(model, prepared_batches)
 
         metrics = evaluator.get_metrics_results()
 
@@ -88,7 +87,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         evaluator = evaluation.get(metrics=metrics, sampler=sampler)
 
         config_id = "ml-1m_128.json"
-        model_wrapper = self._create_model_wrapper(config_id, vocab_size)
+        model = self._create_model(config_id, vocab_size)
 
         initial_metrics = [
             copy.copy(metric_object) for metric_object in evaluator.get_metrics()
@@ -98,7 +97,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         random_popular_items = list(set([random.randint(0, vocab_size)
                                          for _ in range(200)]))
 
-        metrics = evaluator.evaluate(model_wrapper, prepared_batches)
+        metrics = evaluator.evaluate(model, prepared_batches)
 
         for i, metric in enumerate(metrics):
             self.assertNotEqual(metric.result(), initial_metrics[i].result(),

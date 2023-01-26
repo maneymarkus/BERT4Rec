@@ -44,7 +44,7 @@ def main():
 
     evaluator = BERT4RecEvaluator(dataloader=dataloader)
 
-    evaluator.evaluate(model_wrapper, test_batches)
+    evaluator.evaluate(model, test_batches)
     print(evaluator.get_metrics_results())
 
     save_path = pathlib.Path("example_save_model")
@@ -52,10 +52,11 @@ def main():
 
     reloaded_assets = BERT4RecModelWrapper.load(save_path)
     reloaded_model_wrapper = reloaded_assets["model_wrapper"]
+    reloaded_model = reloaded_model_wrapper.model
 
     evaluator.reset_metrics()
 
-    evaluator.evaluate(reloaded_model_wrapper, test_batches)
+    evaluator.evaluate(reloaded_model, test_batches)
     print(evaluator.get_metrics_results())
 
 

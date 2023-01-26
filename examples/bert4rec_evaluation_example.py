@@ -16,7 +16,7 @@ def main():
 
     loaded_assets = BERT4RecModelWrapper.load(save_path)
     loaded_wrapper = loaded_assets["model_wrapper"]
-    model = loaded_wrapper.bert_model
+    loaded_model = loaded_wrapper.model
     dataloader_config = {}
     if "tokenizer" in loaded_assets:
         tokenizer = loaded_assets["tokenizer"]
@@ -36,7 +36,7 @@ def main():
     sampler = samplers.get("random", **sampler_config)
     evaluator = BERT4RecEvaluator(dataloader=dataloader)
 
-    metrics_objects = evaluator.evaluate(loaded_wrapper, test_batches)
+    metrics_objects = evaluator.evaluate(loaded_model, test_batches)
     #evaluator.save_results(save_path)
     metrics = evaluator.get_metrics_results()
     print(metrics)

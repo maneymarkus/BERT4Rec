@@ -199,3 +199,42 @@ class BERT4RecModel(tf.keras.Model):
     @classmethod
     def from_config(cls, config, custom_object=None):
         return cls(**config)
+
+    def rank_items(self,
+                   encoder_input: dict,
+                   items: list = None):
+        """
+        Ranks given `items` according to the encoder output (based on the masked_lm layer output).
+        If `items` is given, which is a list of lists containing tokens, that represent the items
+        to be ranked. Each list in that list should correspond to a mask item in this batch.
+        Therefore, the amount of given item lists should be equal to the number of mask tokens.
+        If `items` is None than the whole vocabulary is ranked.
+
+        """
+
+        encoder_output = self(encoder_input, training=False)
+        mlm_logits_batch = encoder_output["mlm_logits"]
+
+        if "masked_lm_weights" in encoder_input:
+            masked_lm_weights = tf.cast(encoder_input["masked_lm_weights"], tf.bool)
+            mlm_logits_batch = tf.ragged.boolean_mask(mlm_logits_batch, masked_lm_weights)
+
+        rankings = list()
+        # iterate over batch
+        for b_i, mlm_logits in enumerate(mlm_logits_batch):
+            batch_rankings = []
+
+            # iterate over tokens in this tensor
+            for mlm_i, token_logits in enumerate(mlm_logits):
+                if items is not None and type(items[0]) is list:
+                    # => individual ranking list for each token (output)
+                    rank_items_list = items[b_i][mlm_i]
+                    token_logits = tf.gather(token_logits, rank_items_list)
+                    sorted_indexes = tf.argsort(token_logits, direction="DESCENDING")
+                    ranking = tf.gather(rank_items_list, sorted_indexes)
+                else:
+                    ranking = tf.argsort(token_logits, direction="DESCENDING")
+
+                batch_rankings.append(ranking)
+            rankings.append(batch_rankings)
+        return rankings

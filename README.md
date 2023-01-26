@@ -1,31 +1,36 @@
-# BERT4Rec on Tensorflow 2
+# BERT and BERT4Rec on Tensorflow 2
+
+The name derives form a combination of BERT and modular. We simply provide a very modular TensorFlow 2.0 version
+of BERT and BERT4Rec including modules for data preparation, model training and model evaluation.  
 
 ## Get started
+
+This repository is tested on Python 3.10 and TensorFlow 2.10.
 
 > NOTE: Since TensorFlow 2.11 Windows is not supported natively anymore. See:
 > [https://www.tensorflow.org/install](https://www.tensorflow.org/install) and
 > [https://www.tensorflow.org/install/pip](https://www.tensorflow.org/install/pip)
 
-0. Install [Python](https://www.python.org/about/gettingstarted/). (3.7 - 3.10)
-1. Clone this repository (`git clone url`)
-2. Usage of pipenv as the virtual environment and dependency manager is recommended. 
+0. Install [Python](https://www.python.org/about/gettingstarted/). (Version 3.9 - 3.10)
+1. Clone the containing repository (`git clone https://github.com/AdaStruct/Crawlers.git`)
+2. Navigate to this directory (`cd Crawlers/recommender_systems`)
+3. Usage of pipenv as the virtual environment and dependency manager is recommended.
 Get [Pipenv](https://pypi.org/project/pipenv/)
-3. Install dependencies via `pipenv install`. Add the `--dev` option afterwards to also install
+4. Install dependencies via `pipenv install`. Add the `--dev` option to also install
 development dependencies.
-4. Optional: Configure GPU support for better performance. See this [section](./README.md#GPU-implementation)
-5. Run application. The examples directory gives a brief overview on how to use this 
-application.
+5. Optional: Configure GPU support for better performance. See this [section](./README.md#GPU-implementation)
+6. Run application. The examples directory provides ready-to-use example scripts.
 
 ## How to use
 Have a look in the examples directory to get a quick overview on how to use this repository.
-The application was and is built with OOP principles in mind. For most of the directories/modules 
+The application was and is built with OOP principles in mind. For most of the directories/modules
 you will find either a factory or a factory method to conveniently create concrete instances.
 Most of them are also written with reasonable default values. The factory methods are inspired
-by the TensorFlow framework and work similarly. Every factory method accepts a string identifier 
+by the TensorFlow framework and work similarly. Every factory method accepts a string identifier
 and returns the respective class. Each factory method may also be given a `**kwargs` dict with
-keyword arguments to further customize the instantiation of the respective class. Some 
-factory methods may also accept objects that are instances of the represented base class. 
-In this case the given object is simply returned. This is important for comfortable integration 
+keyword arguments to further customize the instantiation of the respective class. Some
+factory methods may also accept objects that are instances of the represented base class.
+In this case the given object is simply returned. This is important for comfortable integration
 into other classes and is also inspired by TensorFlow. Of course, all the classes may also
 be imported and instantiated directly without using the factory method.
 
@@ -130,8 +135,8 @@ optimizer_config = {
 optimizer3 = optimizers.get("adamw", **optimizer_config)
 
 ```
-For development purposes this project uses [pylint](https://pypi.org/project/pylint/) and 
-[coverage](https://pypi.org/project/coverage/). These two python dependencies can also be run 
+For development purposes this project uses [pylint](https://pypi.org/project/pylint/) and
+[coverage](https://pypi.org/project/coverage/). These two python dependencies can also be run
 from the command line via `pipenv run` as they are included as pipenv scripts. Their behaviour
 can be and is defined in their respective configuration files in the projects root directory
 (`.coveragerc` and `.pylintrc`).
@@ -210,7 +215,7 @@ model_2 = models.BERT4RecModel(encoder_2)
 # METHOD THREE: via reloading of a saved models
 # freely defined path
 save_path = pathlib.Path("path/to/model_directory")
-# or with utility functions 
+# or with utility functions
 save_path = model_utils.determine_model_path(pathlib.Path("model_directory_name"))
 loaded_assets = models.BERT4RecModelWrapper.load(save_path)
 loaded_wrapper = loaded_assets["model_wrapper"]
@@ -302,7 +307,6 @@ vocab_size = 200
 # model is already instantiated/reloaded
 encoder = networks.Bert4RecEncoder(vocab_size)
 model = models.BERT4RecModel(encoder)
-model_wrapper = models.BERT4RecModelWrapper(model)
 
 # 1. Evaluator instantiation
 # METHOD ONE: via factory method with default values
@@ -321,8 +325,8 @@ evaluator_3 = evaluation.get(**{"metrics": eval_metrics, "sample_popular": False
 
 # 2. Evaluate model
 test_batches = tf.data.Dataset()
-metrics_objects = evaluator_3.evaluate(model_wrapper, test_batches)
-# when the sample_popular parameter is set to true (default) you have to give a 
+metrics_objects = evaluator_3.evaluate(model, test_batches)
+# when the sample_popular parameter is set to true (default) you have to give a
 # popular items ranking list or a dataloader which can generate this list
 
 # The evaluate method returns the list of metric objects. If you want to have the metrics results
@@ -336,7 +340,7 @@ metric_results_dict = evaluator_3.get_metrics_results()
 - #### bert4rec
   - Contains the main application code
   - ##### apps
-    - Tensorflow modules that implement a practical (well, at least theoretically) use case with 
+    - Tensorflow modules that implement a practical (well, at least theoretically) use case with
 "usable" output
   - ##### dataloaders
     - Classes to load data from dataset files in a consistent way and provide a standardized
@@ -355,7 +359,7 @@ ground truth element and not a ground truth "sequence" to compare the model outp
 - #### config
   - A directory for all types of configuration files necessary for the code
   - ##### bert_train_configs
-    - BERT machine learning configurations for recommendation tasks according to this 
+    - BERT machine learning configurations for recommendation tasks according to this
 [paper](https://arxiv.org/abs/1904.06690) and this [repository](https://github.com/FeiSun/BERT4Rec)
 - #### datasets
   - Python "helper" code to load and store raw datasets
@@ -368,25 +372,25 @@ ground truth element and not a ground truth "sequence" to compare the model outp
 *Note: Only works (officially) with Nvidia GPUs*
 
 If you want to use GPU for improved performance, make sure to have the latest [drivers for your
-GPU](https://www.nvidia.com/Download/index.aspx) installed. Then, follow this 
+GPU](https://www.nvidia.com/Download/index.aspx) installed. Then, follow this
 [guide](https://www.tensorflow.org/install/pip?hl=en).
 
 
 ### Further notes
 
 Some parts of this repository (mainly the components directory and the components_tests directory)
-have been copied from the [Tensorflow Model Garden](https://github.com/tensorflow/models) 
+have been copied from the [Tensorflow Model Garden](https://github.com/tensorflow/models)
 repository.\
 Repository disclaimer:
 
 > Copyright 2022 The TensorFlow Authors. All Rights Reserved.
-> 
+>
 > Licensed under the Apache License, Version 2.0 (the "License");
 > you may not use this file except in compliance with the License.
 > You may obtain a copy of the License at
-> 
+>
 > http://www.apache.org/licenses/LICENSE-2.0
-> 
+>
 > Unless required by applicable law or agreed to in writing, software
 > distributed under the License is distributed on an "AS IS" BASIS,
 > WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.

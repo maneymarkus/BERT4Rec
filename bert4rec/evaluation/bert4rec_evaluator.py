@@ -6,7 +6,7 @@ from typing import Union
 from bert4rec.dataloaders import BaseDataloader, samplers
 from bert4rec.evaluation.base_evaluator import BaseEvaluator
 from bert4rec.evaluation.evaluation_metrics import *
-from bert4rec.models import BERT4RecModelWrapper
+from bert4rec.models import BERT4RecModel
 
 
 bert4rec_evaluation_metrics = [
@@ -43,7 +43,8 @@ class BERT4RecEvaluator(BaseEvaluator):
 
         super().__init__(metrics, sampler, dataloader)
 
-    def evaluate(self, wrapper: BERT4RecModelWrapper,
+    def evaluate(self,
+                 model: BERT4RecModel,
                  test_data: tf.data.Dataset) -> list[EvaluationMetric]:
 
         if self.dataloader is None and not self.sampler.is_fully_prepared():
@@ -52,18 +53,17 @@ class BERT4RecEvaluator(BaseEvaluator):
 
         # iterate over the available batches
         for batch in tqdm.tqdm(test_data, total=test_data.cardinality().numpy()):
-            self.evaluate_batch(wrapper, batch)
+            self.evaluate_batch(model, batch)
 
         return self._metrics
 
-    def evaluate_batch(self, wrapper: BERT4RecModelWrapper, test_batch: dict):
+    def evaluate_batch(self, model: BERT4RecModel, test_batch: dict):
         """
         Evaluation code inspired from
         https://github.com/FeiSun/BERT4Rec/blob/615eaf2004abecda487a38d5b0c72f3dcfcae5b3/run.py#L176
 
-        :param wrapper:
+        :param model:
         :param test_batch:
-        :param tokenized_item_list:
         :return:
         """
 
@@ -107,7 +107,7 @@ class BERT4RecEvaluator(BaseEvaluator):
             ground_truth_items_batch.append(ground_truth_items)
             selected_mlm_positions_batch.append(selected_mlm_positions)
 
-        rankings = wrapper.rank_with_mlm_logits(test_batch, rank_item_lists_batch)
+        rankings = model.rank_items(test_batch, rank_item_lists_batch)
 
         for i, b in enumerate(ground_truth_items_batch):
             for j, idx in enumerate(b):
