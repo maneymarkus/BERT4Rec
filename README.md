@@ -141,6 +141,48 @@ from the command line via `pipenv run` as they are included as pipenv scripts. T
 can be and is defined in their respective configuration files in the projects root directory
 (`.coveragerc` and `.pylintrc`).
 
+### Datasets
+Implemented datasets that can be directly used are to be found in the `datasets` directory.
+However, there is no need to work with these classes directly, as the dataloaders mainly 
+make use of them. If you want to work with these classes anyway (e.g. to apply very custom 
+data preprocessing/data loading) then here is a small guide. The classes there don't have 
+to be instantiated as all methods and attributes are bound to the class itself. All available
+data from the datasets are loaded into a pd.DataFrame.  
+Currently available datasets:
+- Beauty
+- ML-1M
+- ML-20M
+- Reddit
+- Steam
+
+```python 
+from datasets import Beauty, ML1M, ML20M, Reddit, Steam
+
+# simply load all available data into a pd.DataFrame
+data = Beauty.load_data()
+
+# only load a specific amount of records into a dataset (e.g. for debugging or toy datasets)
+# METHOD ONE: via the class variable directly
+ML1M.load_n_records = 5000
+data_2 = ML1M.load_data()
+
+# METHOD TWO: via the appropriate class method
+ML20M.set_load_n_records(5000)
+data_3 = ML20M.load_data()
+
+# or daisy chain it!
+data_4 = Steam.set_load_n_records(50000).load_data()
+
+# Some classes may provide additional class methods and/or parameters for extended 
+# functionality (e.g. data preprocessing). See your desired class for more information
+data_5 = Reddit.load_data(category="some_category", file_name="some_file_name.bz2")
+data_5 = Reddit.filter_data(data_5)
+
+# also: source and dest class attributes may be altered if wanted
+Reddit.source = "some new url"
+Reddit.dest = "your/desired/destination/download/path"
+```
+
 ### Data preparation
 
 ```python
