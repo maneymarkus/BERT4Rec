@@ -34,7 +34,7 @@ def get_byte_size(path: pathlib.Path) -> int:
         return -1
 
 
-def is_available(path: pathlib.Path, expected_size: int) -> bool:
+def check_availability_via_download_size(path: pathlib.Path, expected_size: int) -> bool:
     """
     Determines if the resource is fully available (/downloaded) on the basis
     of the provided expected_size

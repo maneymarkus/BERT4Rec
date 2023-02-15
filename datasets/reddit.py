@@ -9,68 +9,82 @@ import pandas as pd
 import tqdm
 import zstandard as zstd
 
+from datasets.base_dataset import BaseDataset
 import datasets.dataset_utils as dataset_utils
 import bert4rec.utils as utils
 
 
-def load_reddit() -> pd.DataFrame:
-    """
-    Load reddit data from a bz2 compressed data file in json format
+class Reddit(BaseDataset):
 
-    :param debug:
-    :return:
-    """
     category = "comments"
     file_name = "RC_2011-01.zst"
-    url = f"https://files.pushshift.io/reddit/{category}/{file_name}"
-    download_file = utils.get_virtual_env_path().joinpath("data", "reddit", category,  file_name)
-    # size in bytes of the fully downloaded dataset
-    download_size = 621585706
+    source = f"https://files.pushshift.io/reddit/{category}/{file_name}"
+    dest = utils.get_virtual_env_path().joinpath("data", "reddit", category,  file_name)
 
-    if not dataset_utils.is_available(download_file, download_size):
-        logging.info("Raw data doesn't exist. Download...")
-        dataset_utils.download(url, download_file)
-    logging.info("Raw data already exists. Skip downloading")
+    @classmethod
+    def load_data(cls, category: str = "comments", file_name: str = "RC_2011-01.zst") -> pd.DataFrame:
+        """
+        Load reddit data from a bz2 compressed data file in json format
 
-    data = {}
-    logging.info("Read data into python dictionary")
-    with open(download_file, mode="rb") as json_file:
-        # max window size to avoid memory overflow according to: https://stackoverflow.com/a/72092961
-        dctx = zstd.ZstdDecompressor(max_window_size=2147483648)
-        stream_reader = dctx.stream_reader(json_file)
-        text_stream = io.TextIOWrapper(stream_reader, encoding="utf-8")
-        for i, line in enumerate(tqdm.tqdm(text_stream)):
-            data[i] = json.loads(line)
-        json_file.close()
+        :param category:
+        :param file_name:
+        :return:
+        """
+        cls.category = category
+        cls.file_name = file_name
+        return super().load_data()
 
-    logging.info("Start to convert dictionary data to pandas dataframe (this may take a while)")
-    df = pd.DataFrame.from_dict(data, orient="index")
+    @classmethod
+    def is_available(cls) -> bool:
+        # size in bytes of the fully downloaded dataset
+        return cls.dest.exists()
 
-    df = filter_data(df)
+    @classmethod
+    def download(cls):
+        dataset_utils.download(cls.source, cls.dest)
 
-    return df
+    @classmethod
+    def extract_data(cls) -> pd.DataFrame:
+        data = {}
+        logging.info("Read data into python dictionary")
+        with open(cls.dest, mode="rb") as json_file:
+            # max window size to avoid memory overflow according to: https://stackoverflow.com/a/72092961
+            dctx = zstd.ZstdDecompressor(max_window_size=2147483648)
+            stream_reader = dctx.stream_reader(json_file)
+            text_stream = io.TextIOWrapper(stream_reader, encoding="utf-8")
+            for i, line in enumerate(tqdm.tqdm(text_stream)):
+                if cls.load_n_records and i >= cls.load_n_records:
+                    break
+                data[i] = json.loads(line)
+            json_file.close()
 
+        logging.info("Start to convert dictionary data to pandas dataframe (this may take a while)")
+        df = pd.DataFrame.from_dict(data, orient="index")
 
-def filter_data(df: pd.DataFrame) -> pd.DataFrame:
-    # filter out [deleted] authors
-    df = df[df["author"] != "[deleted]"]
+        return df
 
-    # filter out items that have less than three occurrences
-    item_sequence_lengths = df.groupby("parent_id").size()
-    filtered_items = item_sequence_lengths.index[item_sequence_lengths >= 3]
-    df = df[df["parent_id"].isin(filtered_items)]
+    @classmethod
+    def filter_data(cls, df: pd.DataFrame) -> pd.DataFrame:
+        # filter out [deleted] authors
+        df = df[df["author"] != "[deleted]"]
 
-    # filter out users that have less than three occurrences
-    user_sequence_lengths = df.groupby("author").size()
-    filtered_users = user_sequence_lengths.index[user_sequence_lengths >= 3]
-    df = df[df["author"].isin(filtered_users)]
+        # filter out items that have less than three occurrences
+        item_sequence_lengths = df.groupby("parent_id").size()
+        filtered_items = item_sequence_lengths.index[item_sequence_lengths >= 3]
+        df = df[df["parent_id"].isin(filtered_items)]
 
-    return df
+        # filter out users that have less than three occurrences
+        user_sequence_lengths = df.groupby("author").size()
+        filtered_users = user_sequence_lengths.index[user_sequence_lengths >= 3]
+        df = df[df["author"].isin(filtered_users)]
+
+        return df
 
 
 if __name__ == "__main__":
     logging.set_verbosity(logging.DEBUG)
-    data = load_reddit()
+    data = Reddit.load_data()
+    #data = Reddit.filter_data(data)
     print("Data Overview:\n")
     print(data)
     print("\n\nAvailable columns:\n")

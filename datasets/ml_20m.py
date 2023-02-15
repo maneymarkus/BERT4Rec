@@ -7,37 +7,50 @@ from absl import logging
 import pandas as pd
 import tqdm
 
+from datasets.base_dataset import BaseDataset
 import datasets.dataset_utils as dataset_utils
 import bert4rec.utils as utils
 
 
-def load_ml_20m() -> pd.DataFrame:
-    tqdm.tqdm.pandas()
+class ML20M(BaseDataset):
 
-    url = 'https://files.grouplens.org/datasets/movielens/ml-20m.zip'
-    download_dir = utils.get_virtual_env_path().joinpath("data", "ml-20m")
-    # size in bytes of the fully downloaded dataset
-    download_size = 875588784
+    source = 'https://files.grouplens.org/datasets/movielens/ml-20m.zip'
+    dest = utils.get_virtual_env_path().joinpath("data", "ml-20m")
 
-    if not dataset_utils.is_available(download_dir, download_size):
-        logging.info("Raw data doesn't exist. Download...")
-        dataset_utils.download_and_unpack_to_folder(url, download_dir, "zip", True)
-    logging.info("Raw data already exists. Skip downloading")
+    @classmethod
+    def load_data(cls) -> pd.DataFrame:
+        tqdm.tqdm.pandas()
+        return super().load_data()
 
-    ratings_file_path = download_dir.joinpath("ratings.csv")
-    df = pd.read_csv(ratings_file_path, header=0)
-    df.columns = ['uid', 'sid', 'rating', 'timestamp']
-    movies_file_path = download_dir.joinpath('movies.csv')
-    movies_df = pd.read_csv(movies_file_path, header=0)
-    movies_df.columns = ['sid', 'movie_name', 'categories']
-    logging.info("Merge dataframes")
-    df = pd.merge(df, movies_df).progress_apply(lambda x: x)
-    return df
+    @classmethod
+    def is_available(cls) -> bool:
+        # size in bytes of the fully downloaded dataset
+        download_size = 875588784
+
+        if not dataset_utils.check_availability_via_download_size(cls.dest, download_size):
+            return False
+        return True
+
+    @classmethod
+    def download(cls):
+        dataset_utils.download_and_unpack_to_folder(cls.source, cls.dest, "zip", True)
+
+    @classmethod
+    def extract_data(cls) -> pd.DataFrame:
+        ratings_file_path = cls.dest.joinpath("ratings.csv")
+        df = pd.read_csv(ratings_file_path, header=0, nrows=cls.load_n_records)
+        df.columns = ['uid', 'sid', 'rating', 'timestamp']
+        movies_file_path = cls.dest.joinpath('movies.csv')
+        movies_df = pd.read_csv(movies_file_path, header=0, nrows=cls.load_n_records)
+        movies_df.columns = ['sid', 'movie_name', 'categories']
+        logging.info("Merge dataframes")
+        df = pd.merge(df, movies_df).progress_apply(lambda x: x)
+        return df
 
 
 if __name__ == "__main__":
     logging.set_verbosity(logging.DEBUG)
-    data = load_ml_20m()
+    data = ML20M.load_data()
     print("Data Overview:\n")
     print(data)
     print("\n\nAvailable columns:\n")
