@@ -3,8 +3,8 @@ import random
 import tensorflow as tf
 
 from .base_preprocessor import BasePreprocessor
-from bertular import tokenizers
-from bertular.dataloaders import dataloader_utils
+from bert4rec import tokenizers
+from bert4rec.dataloaders import dataloader_utils
 
 
 class BERT4RecPreprocessor(BasePreprocessor):

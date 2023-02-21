@@ -3,8 +3,8 @@ import random
 import string
 import tensorflow as tf
 
-from bertular import tokenizers
-from bertular.dataloaders import preprocessors
+from bert4rec import tokenizers
+from bert4rec.dataloaders import preprocessors
 from tests import test_utils
 
 
