@@ -49,9 +49,8 @@ class BERT4RecModelTests(tf.test.TestCase):
         max_predictions = 5
 
         dataloader = BERT4RecDataloader(max_seq_len=max_seq_length, max_predictions_per_seq=max_predictions)
-
-        ds = test_utils.generate_random_sequence_dataset(ds_size,
-                                                         vocab_size=vocab_size)
+        ds = test_utils.generate_random_sequence_dataset(ds_size, vocab_size=vocab_size)
+        dataloader.generate_vocab(ds)
         ds = dataloader.process_data(ds, finetuning=True)
 
         # overwrite vocab size, as dataloader might add special tokens to vocab size
@@ -103,6 +102,7 @@ class BERT4RecModelTests(tf.test.TestCase):
 
         dataloader = BERT4RecDataloader(max_seq_len=max_sequence_length, max_predictions_per_seq=5)
         ds = test_utils.generate_random_sequence_dataset(ds_size, max_seq_len=max_sequence_length)
+        dataloader.generate_vocab(ds)
         ds = dataloader.process_data(ds, finetuning=True)
         batches = dataloader_utils.make_batches(ds)
         vocab_size = dataloader.tokenizer.get_vocab_size()

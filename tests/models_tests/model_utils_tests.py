@@ -63,6 +63,7 @@ class ModelUtilsTests(tf.test.TestCase):
 
         ds = test_utils.generate_random_sequence_dataset(ds_size, max_seq_len)
         dataloader = BERT4RecDataloader(max_seq_len=max_seq_len, max_predictions_per_seq=max_pred_per_seq)
+        dataloader.generate_vocab(ds)
 
         prepared_ds = dataloader.process_data(ds, finetuning=True)
         prepared_batches = dataloader_utils.make_batches(prepared_ds)
@@ -75,7 +76,7 @@ class ModelUtilsTests(tf.test.TestCase):
         encoder_input = None
         for el in prepared_batches.take(1):
             encoder_input = el
-        random_rank_items = [random.randint(0, vocab_size) for _ in range(5)]
+        random_rank_items = [random.randint(0, vocab_size - 1) for _ in range(5)]
         gathered_item_embeddings = tf.gather(model.encoder.get_embedding_table(), random_rank_items)
 
         encoder_output = model(encoder_input)
