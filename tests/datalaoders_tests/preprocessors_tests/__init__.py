@@ -1,0 +1,2 @@
+from .bert4rec_preprocessor_tests import BERT4RecPreprocessorsTests
+from .bert4rec_temporal_preprocessor_tests import BERT4RecTemporalPreprocessorsTests
