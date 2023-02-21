@@ -1,4 +1,5 @@
 from absl import logging
+import random
 import tensorflow as tf
 
 from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils
@@ -8,7 +9,7 @@ from bert4rec.trainers import optimizers
 import tests.test_utils as test_utils
 
 
-class BERTModelTests(tf.test.TestCase):
+class BERT4RecModelTests(tf.test.TestCase):
     # Warning: May take some time
     def setUp(self):
         super().setUp()
@@ -25,18 +26,18 @@ class BERTModelTests(tf.test.TestCase):
                      num_layers: int,
                      optimizer: tf.keras.optimizers.Optimizer = None):
         bert_encoder = networks.Bert4RecEncoder(vocab_size=vocab_size,
-                                            hidden_size=hidden_size,
-                                            num_layers=num_layers)
-        bert_model = BERT4RecModel(bert_encoder)
+                                                hidden_size=hidden_size,
+                                                num_layers=num_layers)
+        bert4rec_model = BERT4RecModel(bert_encoder)
         if optimizer is None:
             optimizer = self.optimizer
-        bert_model.compile(
+        bert4rec_model.compile(
             optimizer=optimizer,
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         )
         # makes sure the weights are built
-        _ = bert_model(bert_model.inputs)
-        return bert_model
+        _ = bert4rec_model(bert4rec_model.inputs)
+        return bert4rec_model
 
     def test_call_model(self):
         ds_size = 1000
@@ -47,11 +48,11 @@ class BERTModelTests(tf.test.TestCase):
         max_seq_length = 100
         max_predictions = 5
 
-        dataloader = BERT4RecDataloader(max_seq_length, max_predictions)
+        dataloader = BERT4RecDataloader(max_seq_len=max_seq_length, max_predictions_per_seq=max_predictions)
 
-        ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size,
-                                                                     vocab_size=vocab_size,
-                                                                     dataloader=dataloader)
+        ds = test_utils.generate_random_sequence_dataset(ds_size,
+                                                         vocab_size=vocab_size)
+        ds = dataloader.process_data(ds, finetuning=True)
 
         # overwrite vocab size, as dataloader might add special tokens to vocab size
         vocab_size = dataloader.get_tokenizer().get_vocab_size()
@@ -93,6 +94,49 @@ class BERTModelTests(tf.test.TestCase):
         self.assertIsInstance(output, dict)
         output_keys = {"sequence_output", "pooled_output", "encoder_outputs"}
         self.assertAllInSet(list(output.keys()), output_keys)
+
+    def test_rank_items(self):
+        ds_size = 1
+        hidden_size = 768
+        num_layers = 4
+        max_sequence_length = 50
+
+        dataloader = BERT4RecDataloader(max_seq_len=max_sequence_length, max_predictions_per_seq=5)
+        ds = test_utils.generate_random_sequence_dataset(ds_size, max_seq_len=max_sequence_length)
+        ds = dataloader.process_data(ds, finetuning=True)
+        batches = dataloader_utils.make_batches(ds)
+        vocab_size = dataloader.tokenizer.get_vocab_size()
+
+        bert4rec_model = self._build_model(vocab_size, hidden_size=hidden_size, num_layers=num_layers)
+
+        encoder_input = None
+        for el in batches.take(1):
+            encoder_input = el
+
+        # use individual ranking lists for each token -> shape of rank_items list: (batch, tokens, rank_items)
+        rank_items = [
+            [
+                [random.randint(0, vocab_size - 1) for _ in range(random.randint(3, 10))]
+                for _ in range(len(encoder_input["masked_lm_positions"][0]))
+            ]
+        ]
+
+        rankings = bert4rec_model.rank_items(encoder_input,
+                                             rank_items)
+
+        # iterate over batches
+        for b in range(len(rankings)):
+            self.assertLessEqual(len(rankings[b]), len(encoder_input["masked_lm_positions"][b]),
+                                 f"The amount of individual rankings per batch should be less than or "
+                                 f"equal to the amount of masked_lm_positions "
+                                 f"({len(encoder_input['masked_lm_positions'][b])}) "
+                                 f"but received {len(rankings[b])} individual rankings.")
+            # iterate over tokens
+            for i, token_idx in enumerate(rankings[b]):
+                self.assertEqual(len(rankings[b][i]), len(rank_items[b][i]),
+                                 f"The length of an individual ranking list ({len(rankings[b][i])}) should be "
+                                 f"equal to the corresponding original (unranked) items list ("
+                                 f"{len(rank_items[b][i])})")
 
 
 if __name__ == "__main__":

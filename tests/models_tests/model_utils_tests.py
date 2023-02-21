@@ -3,7 +3,7 @@ import pathlib
 import random
 import tensorflow as tf
 
-import bert4rec.dataloaders.dataloader_utils as dataloader_utils
+from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils
 from bert4rec.models import BERT4RecModel
 from bert4rec.models.components import networks
 import bert4rec.models.model_utils as utils
@@ -58,8 +58,13 @@ class ModelUtilsTests(tf.test.TestCase):
 
     def test_rank_items(self):
         ds_size = 1
+        max_seq_len = 100
+        max_pred_per_seq = 5
 
-        prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size)
+        ds = test_utils.generate_random_sequence_dataset(ds_size, max_seq_len)
+        dataloader = BERT4RecDataloader(max_seq_len=max_seq_len, max_predictions_per_seq=max_pred_per_seq)
+
+        prepared_ds = dataloader.process_data(ds, finetuning=True)
         prepared_batches = dataloader_utils.make_batches(prepared_ds)
         vocab_size = dataloader.tokenizer.get_vocab_size()
 

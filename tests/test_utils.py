@@ -2,7 +2,7 @@ import random
 import string
 import tensorflow as tf
 
-from bert4rec.dataloaders import BaseDataloader, BERT4RecDataloader, samplers
+from bert4rec.dataloaders import samplers
 
 
 def generate_random_word_list(min_word_length: int = 5,
@@ -36,30 +36,21 @@ def generate_random_word_list(min_word_length: int = 5,
 
 
 def generate_random_sequence_dataset(ds_size: int = 1000,
-                                     seq_min_len: int = 5,
-                                     seq_max_len: int = 100,
-                                     dataloader: BaseDataloader = None,
+                                     min_seq_len: int = 5,
+                                     max_seq_len: int = 100,
                                      vocab_size: int = 1000,
-                                     seed: int = None) -> (tf.data.Dataset, BaseDataloader):
+                                     seed: int = None) -> tf.data.Dataset:
     random.seed(seed)
 
     vocab = generate_random_word_list(size=vocab_size, seed=seed)
     sampler = samplers.RandomSampler()
 
-    subject_list = []
     sequence_list = []
     for i in range(ds_size):
-        subject_list.append(random.randint(0, ds_size * 2))
-        sequence_length = random.randint(seq_min_len, seq_max_len)
+        sequence_length = random.randint(min_seq_len, max_seq_len)
         sequence = sampler.sample(sequence_length, vocab=vocab, allow_duplicates=True)
         sequence_list.append(sequence)
     sequences = tf.ragged.constant(sequence_list)
-    ds = tf.data.Dataset.from_tensor_slices((subject_list, sequences))
+    ds = tf.data.Dataset.from_tensor_slices(sequences)
 
-    if dataloader is None:
-        dataloader = BERT4RecDataloader(max_seq_len=seq_max_len, max_predictions_per_seq=5)
-
-    dataloader.generate_vocab(sequences)
-    prepared_ds = dataloader.preprocess_dataset(ds, finetuning=True)
-    return prepared_ds, dataloader
-
+    return ds

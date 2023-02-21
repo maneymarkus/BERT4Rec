@@ -3,10 +3,10 @@ import copy
 import random
 import tensorflow as tf
 
-from bert4rec.dataloaders import dataloader_utils, samplers
+from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils, samplers
 import bert4rec.evaluation as evaluation
 from bert4rec.evaluation import evaluation_metrics
-from bert4rec.models import BERT4RecModel, BERT4RecModelWrapper
+from bert4rec.models import BERT4RecModel
 from bert4rec.models.components import networks
 import bert4rec.utils as utils
 import tests.test_utils as test_utils
@@ -34,10 +34,14 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
         return model
 
     def test_evaluate_batch(self):
-        ds_size = 500
+        ds_size = 100
         max_seq_len = 10
+        max_pred_per_seq = 5
 
-        prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
+        ds = test_utils.generate_random_sequence_dataset(ds_size=ds_size, max_seq_len=max_seq_len)
+        dataloader = BERT4RecDataloader(max_seq_len=max_seq_len, max_predictions_per_seq=max_pred_per_seq)
+        dataloader.generate_vocab(ds)
+        prepared_ds = dataloader.process_data(ds, finetuning=True)
         prepared_batches = dataloader_utils.make_batches(prepared_ds, batch_size=5)
         vocab_size = dataloader.tokenizer.get_vocab_size()
 
@@ -67,8 +71,9 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
                                f"but `{metric}` is `{value}`")
 
     def test_reset_metrics(self):
-        ds_size = 100
+        ds_size = 25
         max_seq_len = 5
+        max_pred_per_seq = 3
 
         metrics = [
             evaluation_metrics.Counter(),
@@ -76,7 +81,10 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
             evaluation_metrics.NDCG(100)
         ]
 
-        prepared_ds, dataloader = test_utils.generate_random_sequence_dataset(ds_size=ds_size, seq_max_len=max_seq_len)
+        ds = test_utils.generate_random_sequence_dataset(ds_size=ds_size, max_seq_len=max_seq_len)
+        dataloader = BERT4RecDataloader(max_seq_len=max_seq_len, max_predictions_per_seq=max_pred_per_seq)
+        dataloader.generate_vocab(ds)
+        prepared_ds = dataloader.process_data(ds, finetuning=True)
         prepared_batches = dataloader_utils.make_batches(prepared_ds, batch_size=5)
         vocab_size = dataloader.tokenizer.get_vocab_size()
 

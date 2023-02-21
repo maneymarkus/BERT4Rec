@@ -65,8 +65,9 @@ class BERT4RecWrapperTests(tf.test.TestCase):
             wrapper.save(save_path)
 
         dataloader = BERT4RecDataloader(max_seq_len=max_sequence_length, max_predictions_per_seq=5)
-        dataset, _ = test_utils.generate_random_sequence_dataset(ds_size, dataloader=dataloader)
-        batches = dataloader_utils.make_batches(dataset)
+        ds = test_utils.generate_random_sequence_dataset(ds_size, max_seq_len=max_sequence_length)
+        ds = dataloader.process_data(ds, finetuning=True)
+        batches = dataloader_utils.make_batches(ds)
         random_input = None
         for el in batches.take(1):
             random_input = el
@@ -114,8 +115,9 @@ class BERT4RecWrapperTests(tf.test.TestCase):
         wrapper = BERT4RecModelWrapper(bert_model)
 
         dataloader = BERT4RecDataloader(max_seq_len=max_sequence_length, max_predictions_per_seq=5)
-        dataset, _ = test_utils.generate_random_sequence_dataset(ds_size, dataloader=dataloader)
-        batches = dataloader_utils.make_batches(dataset)
+        ds = test_utils.generate_random_sequence_dataset(ds_size, max_seq_len=max_sequence_length)
+        ds = dataloader.process_data(ds, finetuning=True)
+        batches = dataloader_utils.make_batches(ds)
         random_input = None
         for el in batches.take(1):
             random_input = el
@@ -134,7 +136,7 @@ class BERT4RecWrapperTests(tf.test.TestCase):
 
         loaded_assets = BERT4RecModelWrapper.load(save_path)
         reloaded_wrapper = loaded_assets["model_wrapper"]
-        reloaded_bert_model = reloaded_wrapper.bert_model
+        reloaded_bert_model = reloaded_wrapper.model
         reloaded_encoder = reloaded_bert_model.encoder
         tokenizer = loaded_assets["tokenizer"]
 
@@ -157,74 +159,6 @@ class BERT4RecWrapperTests(tf.test.TestCase):
         self.assertEqual(tokenizer.get_vocab_size(), 1,
                          f"Reloading the tokenizer along with the saved model should restore its vocab. "
                          f"Expected vocab size: 1. Restored vocab size: {tokenizer.get_vocab_size()}")
-
-    def test_rank_items(self):
-        ds_size = 1
-        number_rank_items = 7
-        max_sequence_length = 50
-
-        dataloader = BERT4RecDataloader(max_seq_len=max_sequence_length, max_predictions_per_seq=5)
-        dataset, _ = test_utils.generate_random_sequence_dataset(ds_size, dataloader=dataloader)
-        batches = dataloader_utils.make_batches(dataset)
-        vocab_size = dataloader.tokenizer.get_vocab_size()
-
-        bert_model = self._build_model(vocab_size, max_sequence_len=max_sequence_length)
-        wrapper = BERT4RecModelWrapper(bert_model)
-
-        # initialize weights
-        _ = bert_model(bert_model.inputs)
-
-        encoder_input = None
-        for el in batches.take(1):
-            encoder_input = el
-
-        # use just one generic item list for ranking for all masked tokens
-        rank_items_1 = [random.randint(0, vocab_size - 1) for _ in range(number_rank_items)]
-
-        rankings_1, probabilities_1 = wrapper.rank(encoder_input,
-                                                   rank_items_1,
-                                                   encoder_input["masked_lm_positions"])
-
-        self.assertEqual(len(rankings_1[0]), len(probabilities_1[0]),
-                         f"The length of the ranking list ({len(rankings_1[0])}) should be equal to the "
-                         f"probabilities list length ({len(probabilities_1[0])})")
-        self.assertEqual(len(rankings_1[0]), len(encoder_input["masked_lm_positions"][0]),
-                         f"The amount of individual rankings should be equal to the amount of masked_lm_positions "
-                         f"({len(encoder_input['masked_lm_positions'][0])}) but received {len(rankings_1)} "
-                         f"individual rankings.")
-        ranking = random.choice(rankings_1[0])
-        probability = random.choice(probabilities_1[0])
-        self.assertEqual(len(ranking), len(probability),
-                         f"An individual ranking should have the same amount of items as the respective probability "
-                         f"distribution ({len(probability)}) but actually has: {len(ranking)}")
-        self.assertEqual(len(ranking), number_rank_items,
-                         f"An individual ranking should have as many items as the original rank_items list "
-                         f"({len(rank_items_1)}) but actually has: {len(ranking)}")
-        self.assertAllInSet(ranking, set(rank_items_1))
-
-        # use individual ranking lists for each token -> shape of rank_items list: (batch, tokens, rank_items)
-        rank_items_2 = [
-            [
-                [random.randint(0, vocab_size - 1) for _ in range(random.randint(3, 10))]
-                for _ in range(len(encoder_input["masked_lm_positions"][0]))
-            ]
-        ]
-
-        rankings_2, probabilities_2 = wrapper.rank(encoder_input,
-                                                   rank_items_2,
-                                                   encoder_input["masked_lm_positions"])
-
-        # iterate over batches
-        for b in range(len(rankings_2)):
-            # iterate over tokens
-            for i, token_idx in enumerate(rankings_2[b]):
-                self.assertEqual(len(rankings_2[b][i]), len(probabilities_2[b][i]),
-                                 f"The length of an individual ranking list ({len(rankings_2[b][i])}) should be "
-                                 f"equal to the probabilities list length ({len(probabilities_2[b][i])})")
-                self.assertEqual(len(rankings_2[b][i]), len(rank_items_2[b][i]),
-                                 f"The length of an individual ranking list ({len(rankings_2[b][i])}) should be "
-                                 f"equal to the corresponding original (unranked) items list ("
-                                 f"{len(rank_items_2[b][i])})")
 
     def test_update_meta(self):
         vocab_size = 200

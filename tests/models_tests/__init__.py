@@ -6,6 +6,6 @@ models garden GitHub repository and will likely take a lot of time to execute.
 When extensive changes have been made to the source files, the integration can make sense again.
 """
 from .bert4rec_wrapper_tests import BERT4RecWrapperTests
-from .bert_model_tests import BERTModelTests
+from .bert4rec_model_tests import BERT4RecModelTests
 from .model_utils_tests import ModelUtilsTests
 from .components_tests import Bert4RecEncoderTest
