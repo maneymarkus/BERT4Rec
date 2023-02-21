@@ -1,69 +1,85 @@
-from absl import logging
-import pandas as pd
-import tensorflow as tf
-import tqdm
-from typing import Union
+from typing import Type, Union
 
-from bert4rec.dataloaders import BERT4RecDataloader, dataloader_utils as utils
+from bert4rec.dataloaders import BERT4RecDataloader, preprocessors
 from bert4rec import tokenizers
-import datasets.reddit as reddit
+import datasets
 
 
 class BERT4RecRedditDataloader(BERT4RecDataloader):
     def __init__(self,
                  max_seq_len: int = 200,
                  max_predictions_per_seq: int = 40,
+                 tokenizer: Union[str, tokenizers.BaseTokenizer] = "simple",
+                 data_source: Type[datasets.BaseDataset] = datasets.Reddit,
+                 preprocessor: Type[preprocessors.BasePreprocessor] = preprocessors.BERT4RecPreprocessor,
                  masked_lm_prob: float = 0.2,
                  mask_token_rate: float = 1.0,
                  random_token_rate: float = 0.0,
                  input_duplication_factor: int = 1,
-                 tokenizer: Union[str, tokenizers.BaseTokenizer] = "simple"):
-
+                 min_sequence_len: int = 3):
         super().__init__(
             max_seq_len,
             max_predictions_per_seq,
+            tokenizer,
+            data_source,
+            preprocessor,
             masked_lm_prob,
             mask_token_rate,
             random_token_rate,
             input_duplication_factor,
-            tokenizer)
+            min_sequence_len
+        )
 
     @property
     def dataset_identifier(self):
         return "reddit"
 
-    def load_data_into_ds(self) -> tf.data.Dataset:
-        df = reddit.load_reddit()
-        df = df.sort_values(by="created_utc")
-        df = df.groupby("author")
-        data = dict()
-        for user, u_data in tqdm.tqdm(df):
-            user_seq = u_data["parent_id"].to_list()
-            data[user] = user_seq
-        datatypes = ["str", "list"]
-        user_grouped_df = pd.DataFrame(list(data.items()), columns=["uid", "item_id"])
-        ds = utils.convert_df_to_ds(user_grouped_df, datatypes)
-        return ds
+    def get_data(self,
+                 split_data: bool = True,
+                 sort_by: str = "created_utc",
+                 extract_data: list = ["parent_id"],
+                 datatypes: list = ["list"],
+                 duplication_factor: int = 5,
+                 group_by: str = "author",
+                 apply_mlm: bool = True,
+                 finetuning_split: float = 0) -> tuple:
+        return super().get_data(split_data,
+                                sort_by,
+                                extract_data,
+                                datatypes,
+                                duplication_factor,
+                                group_by,
+                                apply_mlm,
+                                finetuning_split)
 
-    def load_data_into_split_ds(self, duplication_factor: int = None) \
-            -> (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset):
+    def load_data(self,
+                  split_data: bool = True,
+                  sort_by: str = "created_utc",
+                  extract_data: list = ["parent_id"],
+                  datatypes: list = ["list"],
+                  duplication_factor: int = 5,
+                  group_by: str = "author") -> tuple:
+        return super().load_data(split_data,
+                                 sort_by,
+                                 extract_data,
+                                 datatypes,
+                                 duplication_factor,
+                                 group_by)
 
-        super().load_data_into_split_ds(duplication_factor)
-        if duplication_factor is None:
-            duplication_factor = self.input_duplication_factor
-
-        df = reddit.load_reddit()
-        df = df.sort_values(by="created_utc")
-        datatypes = ["str", "list"]
-
-        return utils.split_df_into_three_ds(df, duplication_factor, "author", "parent_id", datatypes)
+    def prepare_training(self,
+                         sort_by: str = "created_utc",
+                         extract_data: list = ["parent_id"],
+                         datatypes: list = ["list"],
+                         group_by: str = "author",
+                         finetuning_split: float = 0.1) -> tuple:
+        return super().prepare_training(sort_by, extract_data, datatypes, group_by, finetuning_split)
 
     def generate_vocab(self, source=None, progress_bar: bool = True) -> True:
         if source is None:
-            df = reddit.load_reddit()
+            df = self.data_source.load_data()
             source = set(df["parent_id"])
         super().generate_vocab(source, progress_bar)
 
     def create_item_list(self) -> list:
-        df = reddit.load_reddit()
+        df = self.data_source.load_data()
         return df["parent_id"].to_list()

@@ -2,9 +2,7 @@ from absl import logging
 import pathlib
 
 from bert4rec.apps import Ranker
-from bert4rec import dataloaders, evaluation
-from bert4rec.evaluation.evaluation_metrics import *
-from bert4rec.dataloaders import samplers
+from bert4rec import dataloaders
 from bert4rec.models import BERT4RecModelWrapper, model_utils
 
 
@@ -27,7 +25,7 @@ def main():
 
     ranker_app = Ranker(model, dataloader)
 
-    ds = dataloader.load_data_into_ds()
+    ds = dataloader.load_data(split_data=False)[0]
     for e in ds.shuffle(ds.cardinality()).take(1):
         # dataset is tuple (user id, sequence) and usage of decode to get str array instead of byte array
         example = [x.decode() for x in e[1].numpy().tolist()]
