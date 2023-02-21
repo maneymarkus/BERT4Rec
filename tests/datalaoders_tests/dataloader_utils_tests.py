@@ -66,7 +66,12 @@ class DataloaderUtilsTest(tf.test.TestCase):
 
         df = pd.DataFrame(data)
 
-        train_df, val_df, test_df = utils.split_sequence_df(df, group_by_column, sequence_column, min_sequence_length=3)
+        train_df, val_df, test_df = utils.split_sequence_df(
+            df,
+            group_by_column,
+            [sequence_column],
+            min_sequence_length=3
+        )
         # 3 special cases
         expected_df_size = df_size + 3
         self.assertEqual(train_df.shape[0], expected_df_size,
@@ -134,6 +139,43 @@ class DataloaderUtilsTest(tf.test.TestCase):
                                  f"({test_list[2][1]}), but has a value of {tensor2_value}")
         logging.debug(ds)
 
+    def test_make_sequence_df(self):
+        df_size = 100
+        test_list = [
+            [
+                random.randint(0, 9),
+                random.randint(0, 9),
+                random.choice(string.ascii_letters)
+            ] for _ in range(df_size)
+        ]
+        df = pd.DataFrame(test_list, columns=["column_1", "column_2", "column_3"])
+        sequence_df_1 = utils.make_sequence_df(df, "column_1", ["column_2"])
+        self.assertEqual(len(sequence_df_1.columns), 1)
+        self.assertEqual(sequence_df_1.columns.tolist(), ["column_2"])
+        sequence_df_2 = utils.make_sequence_df(df, "column_1", ["column_2", "column_3"])
+        self.assertEqual(len(sequence_df_2.columns), 2)
+        self.assertEqual(sequence_df_2.columns.tolist(), ["column_2", "column_3"])
+        for i in sequence_df_1.index:
+            self.assertIsInstance(sequence_df_1["column_2"][i], list)
+        for i in sequence_df_2.index:
+            self.assertIsInstance(sequence_df_2["column_2"][i], list)
+            self.assertIsInstance(sequence_df_2["column_3"][i], list)
+
+    def test_duplicate_dataset(self):
+        ds_values = [random.randint(0, 9) for _ in range(random.randint(20, 30))]
+        ds = tf.data.Dataset.from_tensor_slices(ds_values)
+        ds_size = ds.cardinality()
+        duplication_factor = random.randint(2, 6)
+        duplicated_ds = utils.duplicate_dataset(ds, duplication_factor)
+        expected_ds_size = ds_size * duplication_factor
+        self.assertEqual(duplicated_ds.cardinality(), expected_ds_size)
+        non_duplicated_ds = utils.duplicate_dataset(ds, 1)
+        self.assertEqual(non_duplicated_ds.cardinality(), ds_size)
+        with self.assertRaises(ValueError):
+            utils.duplicate_dataset(ds, 0)
+            utils.duplicate_dataset(ds, -1)
+            utils.duplicate_dataset(ds, -6)
+
     def test_masking_task(self):
         vocab_size = 1000
         seq_length = 100
@@ -196,6 +238,15 @@ class DataloaderUtilsTest(tf.test.TestCase):
         self.assertTrue(all(0 <= x <= seq_length for x in masked_token_positions),
                         f"Each position of every masked token should be greater than or equal to 0 and "
                         f"less than or equal to the sequence length")
+
+    def test_mask_last_token_only(self):
+        mask_token_id = 1
+        tensor_values = [random.randint(10, 50) for _ in range(random.randint(20, 30))]
+        tensor = tf.constant(tensor_values)
+        masked_tensor, masked_positions, masked_tokens = \
+            utils.mask_last_token_only(tensor, mask_token_id)
+        last_value = masked_tensor[len(masked_tensor) - 1]
+        self.assertEqual(last_value.numpy(), mask_token_id)
 
     def test_split_dataset(self):
         ds_size = 5000

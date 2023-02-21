@@ -11,7 +11,6 @@ NOTE: Be aware that these tests require a lot of computation time and power. Esp
 bigger datasets (like ML-20M) require a lot of time
 """
 from absl import logging
-import numpy as np
 import tensorflow as tf
 
 from bert4rec import dataloaders
@@ -22,62 +21,18 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
     def setUp(self):
         super().setUp()
         logging.set_verbosity(logging.DEBUG)
-        self.dataloader = None
+        self.dataloader: dataloaders.BaseDataloader = None
         self.expected_vocab_size = None
 
     def tearDown(self):
         self.dataloader = None
 
-    def _choose_random_element_from_dataset(self, ds: tf.data.Dataset, seed: int = 3):
-        ds_item = ds.shuffle(1000, seed=seed).take(1)
-        return list(ds_item.as_numpy_iterator())[0]
-
-    def _assert_preprocessed_dataset(self, ds: tf.data.Dataset):
-        # retrieve a single dataset element
-        ds_item = self._choose_random_element_from_dataset(ds)
-
-        self.assertIsInstance(ds_item, dict,
-                              "A random item from a preprocessed dataset created by a BERT4rec dataloader "
-                              f"method should be a dict, but is: {type(ds_item)}.")
-        self.assertEqual(len(ds_item), 6,
-                         "A random item from a preprocessed dataset BERT4Rec dataloader should be a dict with "
-                         f"6 values, but this one actually has: {len(ds_item)} values.")
-        dict_keys = ["masked_lm_ids", "masked_lm_positions", "masked_lm_weights", "labels",
-                     "input_word_ids", "input_mask"]
-        self.assertListEqual(list(ds_item.keys()), dict_keys)
-
-    def test_load_data_into_ds(self, ds: tf.data.Dataset = None):
+    def test_dataset_identifier(self):
         if self.dataloader is None:
             return
 
-        if ds is None:
-            ds = self.dataloader.load_data_into_ds()
-        self.assertIsInstance(ds, tf.data.Dataset)
-
-        # retrieve a single dataset element
-        ds_item = self._choose_random_element_from_dataset(ds)
-
-        self.assertIsInstance(ds_item, tuple,
-                              "A random item from a dataset created by a BERT4rec dataloader load_data_into...() "
-                              f"method should be a tuple, but is: {type(ds_item)}.")
-        self.assertEqual(len(ds_item), 2,
-                         "A random item from a BERT4Rec dataloader load_data_init...() method should be a "
-                         f"tuple with two values, but this one actually has: {len(ds_item)} values.")
-        self.assertIsInstance(ds_item[0], np.int64,
-                              "The first element from the dataset item tuple should be an np.int64, but is:"
-                              f"{type(ds_item[0])}")
-        self.assertIsInstance(ds_item[1], np.ndarray,
-                              "The second element from the dataset item tuple should be an np.ndarray, but is:"
-                              f"{type(ds_item[1])}")
-
-    def test_load_data_into_split_ds(self):
-        if self.dataloader is None:
-            return
-
-        train_ds, val_ds, test_ds = self.dataloader.load_data_into_split_ds()
-        dss = [train_ds, val_ds, test_ds]
-        for ds in dss:
-            self.test_load_data_into_ds(ds)
+        id = self.dataloader.dataset_identifier
+        self.assertIsInstance(id, str)
 
     def test_generate_vocab(self):
         vocab_size = 200
@@ -94,6 +49,109 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
 
         self.dataloader.generate_vocab()
         self.assertEqual(self.dataloader.tokenizer.get_vocab_size(), self.expected_vocab_size)
+
+    def test_get_data(self):
+        if self.dataloader is None:
+            return
+
+        ds = self.dataloader.get_data(split_data=False)[0]
+        self.assertIsInstance(ds, tf.data.Dataset)
+
+        train_ds, val_ds, test_ds = self.dataloader.get_data(split_data=True, apply_mlm=False)
+        self.assertIsInstance(train_ds, tf.data.Dataset)
+        self.assertIsInstance(val_ds, tf.data.Dataset)
+        self.assertIsInstance(test_ds, tf.data.Dataset)
+
+        train_ds, val_ds, test_ds = self.dataloader.get_data(
+            split_data=True, apply_mlm=True, finetuning_split=1
+        )
+        self.assertIsInstance(train_ds, tf.data.Dataset)
+        self.assertIsInstance(val_ds, tf.data.Dataset)
+        self.assertIsInstance(test_ds, tf.data.Dataset)
+
+        with self.assertRaises(ValueError):
+            self.dataloader.get_data(finetuning_split=1.1)
+            self.dataloader.get_data(finetuning_split=-0.1)
+            self.dataloader.get_data(duplication_factor=0)
+            self.dataloader.get_data(duplication_factor=-1)
+
+    def test_load_data(self):
+        if self.dataloader is None:
+            return
+
+        ds = self.dataloader.load_data(split_data=False)[0]
+        self.assertIsInstance(ds, tf.data.Dataset)
+
+        train_ds, val_ds, test_ds = self.dataloader.load_data(split_data=True)
+        self.assertIsInstance(train_ds, tf.data.Dataset)
+        self.assertIsInstance(val_ds, tf.data.Dataset)
+        self.assertIsInstance(test_ds, tf.data.Dataset)
+
+        with self.assertRaises(ValueError):
+            self.dataloader.load_data(duplication_factor=0)
+            self.dataloader.load_data(duplication_factor=-1)
+            self.dataloader.load_data(extract_data=["one", "two"], datatypes=["three"])
+            self.dataloader.load_data(extract_data=["one"], datatypes=["two", "three"])
+
+    def test_process_data(self):
+        if self.dataloader is None:
+            return
+
+        ds_size = 100
+        seed = 5
+
+        ds = test_utils.generate_random_sequence_dataset(ds_size=ds_size, seed=seed)
+        # no mlm
+        ds_1 = self.dataloader.process_data(ds, apply_mlm=False)
+        self.assertIsInstance(ds_1, tf.data.Dataset)
+
+        # mlm, no finetuning
+        ds_2 = self.dataloader.process_data(ds, apply_mlm=True, finetuning=False)
+        self.assertIsInstance(ds_2, tf.data.Dataset)
+
+        # mlm, finetuning
+        ds_3 = self.dataloader.process_data(ds, apply_mlm=True, finetuning=True)
+        self.assertIsInstance(ds_3, tf.data.Dataset)
+
+    def test_prepare_training(self):
+        if self.dataloader is None:
+            return
+
+        # method should work fine without any arguments
+        train_ds, val_ds, test_ds = self.dataloader.prepare_training()
+        self.assertIsInstance(train_ds, tf.data.Dataset)
+        self.assertIsInstance(val_ds, tf.data.Dataset)
+        self.assertIsInstance(test_ds, tf.data.Dataset)
+
+    def test_prepare_inference(self):
+        if self.dataloader is None:
+            return
+
+        seq_len = 45
+        seed = 81
+
+        sequence = test_utils.generate_random_word_list(size=seq_len, seed=seed)
+        prepared_sequence = self.dataloader.prepare_inference(sequence)
+        self.assertIsInstance(prepared_sequence, dict)
+        dict_keys = set(prepared_sequence.keys())
+        self.assertContainsSubset(
+            {"input_word_ids", "input_mask"},
+            dict_keys
+        )
+
+    def test_create_item_list(self):
+        if self.dataloader is None:
+            return
+
+        item_list = self.dataloader.create_item_list()
+        self.assertIsInstance(item_list, list)
+
+    def test_create_item_list_tokenized(self):
+        if self.dataloader is None:
+            return
+
+        tokenized_item_list = self.dataloader.create_item_list_tokenized()
+        self.assertIsInstance(tokenized_item_list, list)
 
     def test_create_popular_item_ranking(self):
         if self.dataloader is None:
@@ -113,85 +171,45 @@ class BERT4RecDataloaderTests(tf.test.TestCase):
         self.assertIsInstance(tokenized_pop_items_ranking, list)
         self.assertEqual(len(tokenized_pop_items_ranking), item_vocab_size)
 
-    def test_prepare_training(self):
-        if self.dataloader is None:
-            return
-
-        train_ds, val_ds, test_ds = self.dataloader.prepare_training()
-        dss = [train_ds, val_ds, test_ds]
-        for ds in dss:
-            self._assert_preprocessed_dataset(ds)
-
-    def test_preprocess_dataset(self):
-        if self.dataloader is None:
-            return
-
-        preprocessed_ds = self.dataloader.preprocess_dataset()
-        self._assert_preprocessed_dataset(preprocessed_ds)
-        preprocessed_ds_2 = self.dataloader.preprocess_dataset(apply_mlm=False)
-
-        # retrieve a single dataset element
-        ds_item = self._choose_random_element_from_dataset(preprocessed_ds_2)
-
-        self.assertIsInstance(ds_item, dict,
-                              "A random item from a dataset created by a BERT4rec dataloader "
-                              f"prepare_training() method should be a dict, but is: {type(ds_item)}.")
-        self.assertEqual(len(ds_item), 3,
-                         "A random item from a BERT4Rec dataloader prepare_training() should be a dict with "
-                         f"two values, but this one actually has: {len(ds_item)} values.")
-        dict_keys = {"labels", "input_word_ids", "input_mask"}
-        self.assertAllInSet(list(ds_item.keys()), dict_keys)
-
-    def test_prepare_inference(self):
-        if self.dataloader is None:
-            return
-
-        sequence = test_utils.generate_random_word_list()
-        model_input = self.dataloader.prepare_inference(sequence)
-        self.assertIsInstance(model_input, dict)
-        dict_keys = {"labels", "input_word_ids", "input_mask",
-                     "masked_lm_ids", "masked_lm_positions", "masked_lm_weights"}
-        self.assertAllInSet(list(model_input.keys()), dict_keys)
-        input_word_ids = model_input["input_word_ids"]
-        self.assertEqual(tf.rank(input_word_ids).numpy(), 2)
-        self.assertEqual(len(input_word_ids[0]), self.dataloader._MAX_SEQ_LENGTH)
-        # convert input word ids to list and then remove all the "0" values
-        input_word_ids = input_word_ids.numpy().tolist()[0]
-        while 0 in input_word_ids:
-            input_word_ids.remove(0)
-        last_non_padding_item = input_word_ids[-1]
-        self.assertEqual(last_non_padding_item, self.dataloader._MASK_TOKEN_ID)
-
 
 class BERT4RecML1MDataloaderTests(BERT4RecDataloaderTests):
     def setUp(self):
         super().setUp()
         self.dataloader = dataloaders.BERT4RecML1MDataloader()
-        self.expected_vocab_size = 3710
+        self.expected_vocab_size = 3706 + len(self.dataloader._SPECIAL_TOKENS)
 
-    def test_load_data_into_ds(self, ds: tf.data.Dataset = None):
-        super().test_load_data_into_ds(ds)
-
-    def test_load_data_into_split_ds(self):
-        super().test_load_data_into_split_ds()
+    def test_dataset_identifier(self):
+        super().test_dataset_identifier()
 
     def test_generate_vocab(self):
         super().test_generate_vocab()
+
+    def test_get_data(self):
+        super().test_get_data()
+
+    def test_load_data(self):
+        super().test_load_data()
+
+    def test_process_data(self):
+        super().test_process_data()
+
+    def test_prepare_training(self):
+        super().test_prepare_training()
+
+    def test_prepare_inference(self):
+        super().test_prepare_inference()
+
+    def test_create_item_list(self):
+        super().test_create_item_list()
+
+    def test_create_item_list_tokenized(self):
+        super().test_create_item_list_tokenized()
 
     def test_create_popular_item_ranking(self):
         super().test_create_popular_item_ranking()
 
     def test_create_popular_item_ranking_tokenized(self):
         super().test_create_popular_item_ranking_tokenized()
-
-    def test_prepare_training(self):
-        super().test_prepare_training()
-
-    def test_preprocess_dataset(self):
-        super().test_preprocess_dataset()
-
-    def test_prepare_inference(self):
-        super().test_prepare_inference()
 
 
 class BERT4RecML20MDataloaderTests(BERT4RecDataloaderTests):
@@ -202,24 +220,21 @@ class BERT4RecML20MDataloaderTests(BERT4RecDataloaderTests):
     def setUp(self):
         super().setUp()
         self.dataloader = dataloaders.BERT4RecML20MDataloader()
-        self.expected_vocab_size = 26733
+        self.expected_vocab_size = 26729 + len(self.dataloader._SPECIAL_TOKENS)
 
 
 class BERT4RecRedditDataloaderTests(BERT4RecDataloaderTests):
     def setUp(self):
         super().setUp()
         self.dataloader = dataloaders.BERT4RecRedditDataloader()
-        self.expected_vocab_size = 335424
-
-    def test_load_data_into_ds(self, ds: tf.data.Dataset = None):
-        super().test_load_data_into_ds(ds)
+        self.expected_vocab_size = 335420 + len(self.dataloader._SPECIAL_TOKENS)
 
 
 class BERT4RecBeautyDataloaderTests(BERT4RecDataloaderTests):
     def setUp(self):
         super().setUp()
         self.dataloader = dataloaders.BERT4RecBeautyDataloader()
-        self.expected_vocab_size = 54546
+        self.expected_vocab_size = 54542 + len(self.dataloader._SPECIAL_TOKENS)
 
 
 class BERT4RecSteamDataloaderTests(BERT4RecDataloaderTests):
@@ -230,7 +245,7 @@ class BERT4RecSteamDataloaderTests(BERT4RecDataloaderTests):
     def setUp(self):
         super().setUp()
         self.dataloader = dataloaders.BERT4RecSteamDataloader()
-        self.expected_vocab_size = 13048
+        self.expected_vocab_size = 13044 + len(self.dataloader._SPECIAL_TOKENS)
 
 
 if __name__ == '__main__':
