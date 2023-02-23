@@ -94,7 +94,7 @@ class BERT4RecDataloader(BaseDataloader):
 
         processed_datasets = []
         for i, ds in enumerate(datasets):
-            if i > 1:
+            if i >= 1:
                 processed_datasets.append(self.process_data(ds, apply_mlm, finetuning=True))
             else:
                 if finetuning_split > 0:
@@ -145,8 +145,6 @@ class BERT4RecDataloader(BaseDataloader):
                      apply_mlm: bool = True,
                      finetuning: bool = False) -> tf.data.Dataset:
         self.preprocessor.set_properties(tokenizer=self.tokenizer,
-                                         apply_mlm=apply_mlm,
-                                         finetuning=finetuning,
                                          max_seq_len=self._MAX_SEQ_LENGTH,
                                          max_predictions_per_seq=self._MAX_PREDICTIONS_PER_SEQ,
                                          mask_token_id=self._MASK_TOKEN_ID,
@@ -155,7 +153,7 @@ class BERT4RecDataloader(BaseDataloader):
                                          masked_lm_rate=self.masked_lm_prob,
                                          mask_token_rate=self.mask_token_rate,
                                          random_token_rate=self.random_token_rate)
-        prepared_ds = self.preprocessor.process_dataset(ds)
+        prepared_ds = self.preprocessor.process_dataset(ds, apply_mlm, finetuning)
         return prepared_ds
 
     def generate_vocab(self, source=None, progress_bar: bool = True) -> True:

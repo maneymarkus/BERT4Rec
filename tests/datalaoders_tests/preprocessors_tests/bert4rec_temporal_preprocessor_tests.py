@@ -48,14 +48,9 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
     def test_set_properties(self):
         self.preprocessor.set_properties(tokenizer=self.tokenizer)
         self.assertEqual(type(self.preprocessor.tokenizer), tokenizers.SimpleTokenizer)
-        self.preprocessor.set_properties(apply_mlm=True)
         self.assertIsNotNone(self.preprocessor.tokenizer)
-        self.assertEqual(type(self.preprocessor.tokenizer), tokenizers.SimpleTokenizer)
-        self.preprocessor.set_properties(finetuning=True)
-        self.preprocessor.set_properties(apply_mlm=False)
-        self.assertFalse(self.preprocessor.apply_mlm)
-        self.assertTrue(self.preprocessor.finetuning)
         self.preprocessor.set_properties(pad_token_id=5, mask_token_rate=0.3)
+        self.assertEqual(type(self.preprocessor.tokenizer), tokenizers.SimpleTokenizer)
         self.assertEqual(self.preprocessor.pad_token_id, 5)
         self.assertEqual(self.preprocessor.mask_token_rate, 0.3)
         self.preprocessor.set_properties(pad_token_id=0, unk_token_id=3)
@@ -69,11 +64,10 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
         timestamps = list(range(10000000, 10200000, 8000))
         timestamps_tensor = tf.constant(timestamps)
         # No Masked Language Model
-        self.preprocessor.set_properties(
-            apply_mlm=False,
-            finetuning=False
-        )
-        model_inputs = self.preprocessor.process_element(sequence_tensor, timestamps_tensor)
+        model_inputs = self.preprocessor.process_element(sequence_tensor,
+                                                         timestamps_tensor,
+                                                         apply_mlm=False,
+                                                         finetuning=False)
         self.assertIsInstance(model_inputs, dict)
         self.assertEqual(len(list(model_inputs.values())), 4)
         for key, value in model_inputs.items():
@@ -85,11 +79,10 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
             self.assertEqual(value[len(value) - 1], self.pad_token_id)
 
         # Masked Language Model, No Finetuning
-        self.preprocessor.set_properties(
-            apply_mlm=True,
-            finetuning=False
-        )
-        model_inputs_2 = self.preprocessor.process_element(sequence_tensor, timestamps_tensor)
+        model_inputs_2 = self.preprocessor.process_element(sequence_tensor,
+                                                           timestamps_tensor,
+                                                           apply_mlm=True,
+                                                           finetuning=False)
         self.assertIsInstance(model_inputs_2, dict)
         self.assertEqual(len(list(model_inputs_2.values())), 7)
         sub_dict_1 = {
@@ -121,11 +114,10 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
             self.assertIn(self.pad_token_id, value)
 
         # Masked Language Model, Finetuning
-        self.preprocessor.set_properties(
-            apply_mlm=True,
-            finetuning=True
-        )
-        model_inputs_3 = self.preprocessor.process_element(sequence_tensor, timestamps_tensor)
+        model_inputs_3 = self.preprocessor.process_element(sequence_tensor,
+                                                           timestamps_tensor,
+                                                           apply_mlm=True,
+                                                           finetuning=True)
         self.assertIsInstance(model_inputs_3, dict)
         self.assertEqual(len(list(model_inputs_3.values())), 7)
         sub_dict_1 = {
@@ -159,16 +151,16 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
             self.assertEqual(value[1], self.pad_token_id)
 
         # Oversize
-        self.preprocessor.set_properties(
-            finetuning=False
-        )
         oversize_sequence = [
             random.choice(string.ascii_letters) for _ in range(self.max_seq_len + 20)
         ]
         oversize_seq_tensor = tf.constant(oversize_sequence)
         oversize_timestamps = list(range(10000000, 10200000, 1665))
         oversize_time_tensor = tf.constant(oversize_timestamps)
-        model_inputs_4 = self.preprocessor.process_element(oversize_seq_tensor, oversize_time_tensor)
+        model_inputs_4 = self.preprocessor.process_element(oversize_seq_tensor,
+                                                           oversize_time_tensor,
+                                                           apply_mlm=True,
+                                                           finetuning=False)
         self.assertIsInstance(model_inputs_4, dict)
         self.assertEqual(len(list(model_inputs_4.values())), 7)
         sub_dict_1 = {
@@ -202,15 +194,13 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
             inp=[seq],
             Tout=[tf.string, tf.int32]
         ))
-        self.preprocessor.set_properties(apply_mlm=False)
-        prepared_ds_without_mlm = self.preprocessor.process_dataset(ds)
+        prepared_ds_without_mlm = self.preprocessor.process_dataset(ds, apply_mlm=False, finetuning=False)
         self.assertIsInstance(prepared_ds_without_mlm, tf.data.Dataset)
         for el in prepared_ds_without_mlm:
             self.assertEqual(type(el), dict)
             self.assertEqual(len(list(el.values())), 4)
 
-        self.preprocessor.set_properties(apply_mlm=True)
-        prepared_ds_with_mlm = self.preprocessor.process_dataset(ds)
+        prepared_ds_with_mlm = self.preprocessor.process_dataset(ds, apply_mlm=True, finetuning=False)
         self.assertIsInstance(prepared_ds_with_mlm, tf.data.Dataset)
         for el in prepared_ds_with_mlm:
             self.assertEqual(type(el), dict)

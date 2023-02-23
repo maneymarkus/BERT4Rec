@@ -1,4 +1,5 @@
 import copy
+import functools
 import random
 import tensorflow as tf
 import time
@@ -11,8 +12,6 @@ from bert4rec.dataloaders import dataloader_utils
 class BERT4RecTemporalPreprocessor(BasePreprocessor):
 
     tokenizer: tokenizers.BaseTokenizer = None
-    apply_mlm: bool = True,
-    finetuning: bool = False,
     max_seq_len: int = None,
     max_predictions_per_seq: int = None,
     mask_token_id: int = None,
@@ -25,8 +24,6 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
     @classmethod
     def set_properties(cls,
                        tokenizer: tokenizers.BaseTokenizer = None,
-                       apply_mlm: bool = None,
-                       finetuning: bool = None,
                        max_seq_len: int = None,
                        max_predictions_per_seq: int = None,
                        mask_token_id: int = None,
@@ -38,8 +35,6 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
         # the "if" and "or" statements make sure that setting only single values won't reset already
         # other set attributes
         cls.tokenizer = tokenizer or cls.tokenizer
-        cls.apply_mlm = apply_mlm if apply_mlm is not None else cls.apply_mlm
-        cls.finetuning = finetuning if finetuning is not None else cls.finetuning
         cls.max_seq_len = max_seq_len or cls.max_seq_len
         cls.max_predictions_per_seq = max_predictions_per_seq or cls.max_predictions_per_seq
         cls.mask_token_id = mask_token_id if mask_token_id is not None else cls.mask_token_id
@@ -50,7 +45,7 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
         cls.random_token_rate = random_token_rate if random_token_rate is not None else cls.random_token_rate
 
     @classmethod
-    def process_element(cls, sequence, timestamps) -> dict:
+    def process_element(cls, sequence, timestamps, apply_mlm: bool, finetuning: bool) -> dict:
         """
         Preprocess given features for training tasks (either regular training or finetuning)
 
@@ -66,7 +61,7 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
 
         # Truncate inputs to a maximum length. If finetuning is applied, take only the most recent items.
         # If sequence is actually shorter than the allowed length this expression will take the whole sequence
-        if cls.finetuning or len(tokens) <= cls.max_seq_len:
+        if finetuning or len(tokens) <= cls.max_seq_len:
             segments = tokens[-cls.max_seq_len:]
             timestamps = timestamps[-cls.max_seq_len:]
         else:
@@ -83,8 +78,8 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
         labels = copy.copy(input_word_ids)
 
         # apply dynamic masking task
-        if cls.apply_mlm:
-            if not cls.finetuning:
+        if apply_mlm:
+            if not finetuning:
                 # prepared segments is the masked_token_ids tensor (so with the mlm applied)
                 input_word_ids, masked_lm_positions, masked_lm_ids = dataloader_utils.apply_dynamic_masking_task(
                     input_word_ids,
@@ -129,8 +124,10 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
         return processed_features
 
     @classmethod
-    def process_dataset(cls, ds: tf.data.Dataset) -> tf.data.Dataset:
-        return ds.map(cls._ds_map_fn)
+    def process_dataset(cls, ds: tf.data.Dataset, apply_mlm: bool, finetuning: bool) -> tf.data.Dataset:
+        return ds.map(functools.partial(
+            cls._ds_map_fn, apply_mlm, finetuning
+        ), num_parallel_calls=tf.data.AUTOTUNE, deterministic=True)
 
     @classmethod
     def prepare_inference(cls, data) -> dict:
@@ -163,8 +160,6 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
 
         cls.set_properties(
             tokenizer=cls.tokenizer,
-            apply_mlm=True,
-            finetuning=True,
             max_seq_len=cls.max_seq_len,
             max_predictions_per_seq=cls.max_predictions_per_seq,
             mask_token_id=cls.mask_token_id,
@@ -175,7 +170,7 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
             random_token_rate=cls.random_token_rate
         )
 
-        preprocessed_sequence = cls.process_element(sequence, timestamps)
+        preprocessed_sequence = cls.process_element(sequence, timestamps, True, True)
 
         # expand dimension of tensors since encoder needs inputs of dimension 2
         for key, value in preprocessed_sequence.items():
@@ -185,17 +180,17 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
         return preprocessed_sequence
 
     @classmethod
-    def _ds_map_fn(cls, sequence, timestamps):
+    def _ds_map_fn(cls, apply_mlm: bool, finetuning: bool, sequence, timestamps):
         """
         See `call_process_element()` method, why this intermediate step is necessary.
         """
 
         processed_features = dict()
 
-        if cls.apply_mlm:
+        if apply_mlm:
             output = tf.py_function(
                 cls._call_process_element,
-                [sequence, timestamps],
+                [sequence, timestamps, apply_mlm, finetuning],
                 [tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64]
             )
             processed_features["masked_lm_ids"] = output[4]
@@ -204,7 +199,7 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
         else:
             output = tf.py_function(
                 cls._call_process_element,
-                [sequence, timestamps],
+                [sequence, timestamps, apply_mlm, finetuning],
                 [tf.int64, tf.int64, tf.int64, tf.int64]
             )
 
@@ -216,13 +211,13 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
         return processed_features
 
     @classmethod
-    def _call_process_element(cls, sequence, timestamps):
+    def _call_process_element(cls, sequence, timestamps, apply_mlm: bool, finetuning: bool):
         """
         This function simply calls the `feature_preprocessing()` method and returns its return values as a list.
         This intermediate step allows the execution of python code in a tensorflow environment.
         Otherwise, the tokenizer could not alternate the given tensors during the `dataset.map()` procedure.
         """
-        model_inputs = cls.process_element(sequence, timestamps)
+        model_inputs = cls.process_element(sequence, timestamps, apply_mlm, finetuning)
 
         # detailed declaration to ensure correct positions
         processed_features_list = [model_inputs["labels"],
@@ -230,7 +225,7 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
                                    model_inputs["input_mask"],
                                    model_inputs["input_timestamps"]]
 
-        if cls.apply_mlm:
+        if apply_mlm:
             processed_features_list.append(model_inputs["masked_lm_ids"])
             processed_features_list.append(model_inputs["masked_lm_positions"])
             processed_features_list.append(model_inputs["masked_lm_weights"])
