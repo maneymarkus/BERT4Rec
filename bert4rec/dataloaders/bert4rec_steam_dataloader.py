@@ -14,7 +14,7 @@ class BERT4RecSteamDataloader(BERT4RecDataloader):
                  masked_lm_prob: float = 0.4,
                  mask_token_rate: float = 1.0,
                  random_token_rate: float = 0.0,
-                 input_duplication_factor: int = 1,
+                 input_duplication_factor: int = 3,
                  min_sequence_len: int = 3):
         super().__init__(
             max_seq_len,
@@ -38,7 +38,7 @@ class BERT4RecSteamDataloader(BERT4RecDataloader):
                  sort_by: str = None,
                  extract_data: list = ["item_id"],
                  datatypes: list = ["list"],
-                 duplication_factor: int = 5,
+                 duplication_factor: int = None,
                  group_by: str = "user_id",
                  apply_mlm: bool = True,
                  finetuning_split: float = 0) -> tuple:
@@ -56,7 +56,7 @@ class BERT4RecSteamDataloader(BERT4RecDataloader):
                   sort_by: str = None,
                   extract_data: list = ["item_id"],
                   datatypes: list = ["list"],
-                  duplication_factor: int = 5,
+                  duplication_factor: int = None,
                   group_by: str = "user_id") -> tuple:
         return super().load_data(split_data,
                                  sort_by,
