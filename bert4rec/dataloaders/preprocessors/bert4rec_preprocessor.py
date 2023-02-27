@@ -161,8 +161,8 @@ class BERT4RecPreprocessor(BasePreprocessor):
 
         # expand dimension of tensors since encoder needs inputs of dimension 2
         for key, value in preprocessed_sequence.items():
-            if tf.is_tensor(value):
-                preprocessed_sequence[key] = tf.expand_dims(value, axis=0)
+            if isinstance(value, np.ndarray):
+                preprocessed_sequence[key] = tf.expand_dims(tf.constant(value), axis=0)
 
         return preprocessed_sequence
 
