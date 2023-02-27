@@ -18,7 +18,7 @@ def main():
     logging.set_verbosity(logging.DEBUG)
 
     # definition of variables
-    EPOCHS = 5
+    EPOCHS = 150
     batch_size = 256
     input_duplication_factor = 5
     finetuning_split = 0.1
@@ -39,7 +39,7 @@ def main():
     tokenizer = dataloader.get_tokenizer()
 
     # load a specific config
-    config_path = pathlib.Path(f"../config/bert4rec_train_configs/{encoder_config}")
+    config_path = pathlib.Path(f"../bert4rec/config/bert4rec_train_configs/{encoder_config}")
     config = utils.load_json_config(config_path)
 
     bert_encoder = networks.Bert4RecEncoder(tokenizer.get_vocab_size(), **config)

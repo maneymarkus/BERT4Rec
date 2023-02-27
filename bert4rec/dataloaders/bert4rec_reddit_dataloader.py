@@ -1,8 +1,7 @@
 from typing import Type, Union
 
 from bert4rec.dataloaders import BERT4RecDataloader, preprocessors
-from bert4rec import tokenizers
-import datasets
+from bert4rec import datasets, tokenizers
 
 
 class BERT4RecRedditDataloader(BERT4RecDataloader):

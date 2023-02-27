@@ -6,7 +6,7 @@ from typing import Union, Type
 from bert4rec import tokenizers
 from bert4rec.dataloaders import dataloader_utils as utils
 from bert4rec.dataloaders.preprocessors import BasePreprocessor
-from datasets import BaseDataset
+from bert4rec.datasets import BaseDataset
 
 
 class BaseDataloader(abc.ABC):

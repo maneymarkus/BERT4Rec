@@ -6,7 +6,7 @@ from bert4rec.dataloaders import BaseDataloader
 from bert4rec.dataloaders import preprocessors
 from bert4rec import tokenizers
 import bert4rec.dataloaders.dataloader_utils as utils
-from datasets import BaseDataset
+from bert4rec.datasets import BaseDataset
 
 
 class BERT4RecDataloader(BaseDataloader):

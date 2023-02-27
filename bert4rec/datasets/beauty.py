@@ -9,8 +9,7 @@ import json
 import pandas as pd
 import tqdm
 
-from datasets.base_dataset import BaseDataset
-import datasets.dataset_utils as dataset_utils
+from bert4rec.datasets import BaseDataset, dataset_utils
 import bert4rec.utils as utils
 
 
@@ -124,5 +123,3 @@ if __name__ == "__main__":
     print(data.columns)
     print("\n\nAn example row:\n")
     print(data.iloc[0, :])
-
-

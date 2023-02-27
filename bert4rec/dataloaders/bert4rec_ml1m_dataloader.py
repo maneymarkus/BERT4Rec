@@ -1,8 +1,7 @@
 from typing import Union, Type
 
 from bert4rec.dataloaders import BERT4RecDataloader, preprocessors
-from bert4rec import tokenizers
-import datasets
+from bert4rec import datasets, tokenizers
 
 
 class BERT4RecML1MDataloader(BERT4RecDataloader):

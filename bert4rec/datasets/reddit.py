@@ -9,8 +9,7 @@ import pandas as pd
 import tqdm
 import zstandard as zstd
 
-from datasets.base_dataset import BaseDataset
-import datasets.dataset_utils as dataset_utils
+from bert4rec.datasets import BaseDataset, dataset_utils
 import bert4rec.utils as utils
 
 

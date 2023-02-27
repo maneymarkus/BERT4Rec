@@ -29,7 +29,7 @@ def main():
     tokenizer = dataloader.get_tokenizer()
 
     # load a specific config
-    config_path = pathlib.Path("../config/bert4rec_train_configs/reddit_128.json")
+    config_path = pathlib.Path("../bert4rec/config/bert4rec_train_configs/reddit_128.json")
     config = utils.load_json_config(config_path)
 
     bert_encoder = networks.Bert4RecEncoder(tokenizer.get_vocab_size(), **config)

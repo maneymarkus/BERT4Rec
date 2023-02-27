@@ -23,7 +23,7 @@ class Bert4RecEvaluatorTest(tf.test.TestCase):
 
     def _create_model(self, config_identifier: str = "ml-1m_128.json", vocab_size: int = 1000):
         # load a specific config
-        config_path = utils.get_project_root().joinpath(f"config/bert4rec_train_configs/{config_identifier}")
+        config_path = utils.get_project_root().joinpath(f"bert4rec/config/bert4rec_train_configs/{config_identifier}")
         config = utils.load_json_config(config_path)
 
         bert_encoder = networks.Bert4RecEncoder(vocab_size, **config)

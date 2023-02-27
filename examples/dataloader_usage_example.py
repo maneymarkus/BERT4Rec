@@ -2,8 +2,7 @@ from absl import logging
 import random
 import string
 
-import datasets
-from bert4rec import dataloaders
+from bert4rec import datasets, dataloaders
 from bert4rec.dataloaders import preprocessors
 
 

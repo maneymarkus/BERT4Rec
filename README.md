@@ -1,7 +1,7 @@
 # BERT and BERT4Rec on Tensorflow 2
 
-The name derives form a combination of BERT and modular. We simply provide a very modular TensorFlow 2.0 version
-of BERT and BERT4Rec including modules for data preparation, model training and model evaluation.  
+This repository provides a very modular TensorFlow 2.0 version of BERT4Rec (based on the Tensorflow
+ Model Garden) including modules for data preparation, model training and model evaluation.  
 
 ## Get started
 
@@ -54,12 +54,12 @@ dataloader_factory_2 = dataloaders.get_dataloader_factory("bert4rec")
 dataloader = dataloader_factory.create_ml_1m_dataloader()
 # 2.2 create dataloader with custom values
 dataloader_config = {
-    "max_seq_len": 256,
-    "max_predictions_per_seq": 50,
-    "masked_lm_prob": 0.15,
-    "input_duplication_factor": 10,
-    "tokenizer": "simple",
-    # ... more values available
+  "max_seq_len": 256,
+  "max_predictions_per_seq": 50,
+  "masked_lm_prob": 0.15,
+  "input_duplication_factor": 10,
+  "tokenizer": "simple",
+  # ... more values available
 }
 dataloader_2 = dataloader_factory_2.create_ml_1m_dataloader(**dataloader_config)
 
@@ -70,10 +70,10 @@ sampler = samplers.get()
 sampler2 = samplers.get("popular")
 # 3. create sampler with custom values
 sampler_config = {
-    "source": [],
-    "sample_size": 15,
-    "allow_duplicates": False,
-    "seed": 3
+  "source": [],
+  "sample_size": 15,
+  "allow_duplicates": False,
+  "seed": 3
 }
 sampler3 = samplers.get("random", **sampler_config)
 
@@ -84,14 +84,14 @@ evaluator = evaluation.get()
 evaluator2 = evaluation.get("bert4rec")
 # 3. create evaluator with custom values
 evaluator_config = {
-    "metrics": [
-        evaluation_metrics.HR(5),
-        evaluation_metrics.NDCG(15),
-        evaluation_metrics.Counter(),
-        evaluation_metrics.MAP(),
-    ],
-    "sampler": sampler2,
-    "dataloader": dataloader
+  "metrics": [
+    evaluation_metrics.HR(5),
+    evaluation_metrics.NDCG(15),
+    evaluation_metrics.Counter(),
+    evaluation_metrics.MAP(),
+  ],
+  "sampler": sampler2,
+  "dataloader": dataloader
 }
 evaluator3 = tokenizers.get("bert4rec", **evaluator_config)
 
@@ -102,8 +102,8 @@ tokenizer = tokenizers.get()
 tokenizer2 = tokenizers.get("simple")
 # 3. create tokenizer with custom values
 tokenizer_config = {
-    "vocab_file_path": pathlib.Path("some/path"),
-    "extensible": False
+  "vocab_file_path": pathlib.Path("some/path"),
+  "extensible": False
 }
 tokenizer3 = tokenizers.get("simple", **tokenizer_config)
 
@@ -112,7 +112,7 @@ tokenizer3 = tokenizers.get("simple", **tokenizer_config)
 encoder = networks.Bert4RecEncoder(200)
 model = models.BERT4RecModel(encoder)
 trainer_config = {
-    "model": model
+  "model": model
 }
 # 1. default
 trainer = trainers.get(**trainer_config)
@@ -126,11 +126,11 @@ optimizer = optimizers.get()
 optimizer2 = optimizers.get("adamw")
 # 3. create tokenizer with custom values
 optimizer_config = {
-    "init_lr": 5e-5,
-    "num_warmup_steps": 0,
-    "weight_decay_rate": 5e-3,
-    "epsilon": 1e-7,
-    # ... more values available
+  "init_lr": 5e-5,
+  "num_warmup_steps": 0,
+  "weight_decay_rate": 5e-3,
+  "epsilon": 1e-7,
+  # ... more values available
 }
 optimizer3 = optimizers.get("adamw", **optimizer_config)
 
@@ -156,7 +156,7 @@ Currently available datasets:
 - Steam
 
 ```python 
-from datasets import Beauty, ML1M, ML20M, Reddit, Steam
+from bert4rec.datasets import Beauty, ML1M, ML20M, Reddit, Steam
 
 # simply load all available data into a pd.DataFrame
 data = Beauty.load_data()
@@ -201,11 +201,11 @@ dataloader_2 = dataloaders.BERT4RecML1MDataloader()
 # generate vocab (basically fill the tokenizer vocab)
 dataloader.generate_vocab()
 
-# load the represented data into a dataset
-ds = dataloader.load_data_into_ds()
+# load the represented data into a dataset (always returns a tuple) 
+ds = dataloader.load_data(split_data=False)[0]
 
 # load the represented data directly into three separate datasets (train, validation, test)
-train_ds, val_ds, test_ds = dataloader.load_data_into_split_ds()
+train_ds, val_ds, test_ds = dataloader.load_data(split_data=True)
 
 # create a ranking of all the items in the dataset according to their popularity
 pop_items_ranking = dataloader.create_popular_item_ranking()
@@ -217,8 +217,8 @@ tokenized_pop_items_ranking = dataloader.create_popular_item_ranking_tokenized()
 # testing tasks (items are tokenized and masked language model is applied
 train_ds, val_ds, test_ds = dataloader.prepare_training()
 
-# preprocess a dataset on your own
-custom_train_ds = dataloader_2.preprocess_dataset(train_ds, apply_mlm = False)
+# preprocess a dataset on your own (makes no sense here, as the train_ds from above is already processed)
+custom_train_ds = dataloader_2.process_data(train_ds, apply_mlm=False)
 
 # prepare input for inference tasks (e.g. recommendation on the basis of a "real" user sequence)
 sequence = list(...)
@@ -247,7 +247,7 @@ model_1 = models.BERT4RecModel(encoder)
 
 # METHOD TWO: via predefined models config (can be found and created in the respective configs directory)
 # freely defined path
-config_path = pathlib.Path("../config/bert4rec_train_configs/ml-1m_128.json")
+config_path = pathlib.Path("../bert4rec/config/bert4rec_train_configs/ml-1m_128.json")
 # or safer: path relative from project root
 config_path = utils.get_project_root().joinpath("config/bert4rec_train_configs/ml-1m_128.json")
 encoder_config = utils.load_json_config(config_path)
@@ -264,8 +264,8 @@ loaded_wrapper = loaded_assets["model_wrapper"]
 model_3 = loaded_wrapper.bert_model
 dataloader_config = {}
 if "tokenizer" in loaded_assets:
-    tokenizer = loaded_assets["tokenizer"]
-    dataloader_config["tokenizer"] = tokenizer
+  tokenizer = loaded_assets["tokenizer"]
+  dataloader_config["tokenizer"] = tokenizer
 ```
 
 ### Model training
@@ -300,9 +300,9 @@ trainer.initialize_model()
 optimizer = optimizers.get()
 # METHOD TWO: use custom values with factory method
 optimizer_config = {
-    "num_warmup_steps": 5000,
-    "weight_decay_rate": 0.005,
-    "epsilon": 1e-5,
+  "num_warmup_steps": 5000,
+  "weight_decay_rate": 0.005,
+  "epsilon": 1e-5,
 }
 optimizer_2 = optimizers.get(**optimizer_config)
 # METHOD THREE: use function to create adamw optimizer (as the creation is a bit tricky)
@@ -320,8 +320,8 @@ accuracy_metric = tf.keras.metrics.SparseCategoricalAccuracy()
 ...
 
 metrics = [
-    accuracy_metric,
-    ...
+  accuracy_metric,
+  ...
 ]
 
 trainer_2.initialize_model(optimizer_3, loss, metrics)
@@ -357,11 +357,11 @@ evaluator = evaluation.get()
 evaluator_2 = evaluation.BERT4RecEvaluator()
 # you may add custom values:
 eval_metrics = [
-    evaluation.Counter(name="Number Assessments"),
-    evaluation.NDCG(10),
-    evaluation.NDCG(20),
-    evaluation.NDCG(50),
-    evaluation.HR(1),
+  evaluation.Counter(name="Number Assessments"),
+  evaluation.NDCG(10),
+  evaluation.NDCG(20),
+  evaluation.NDCG(50),
+  evaluation.HR(1),
 ]
 evaluator_3 = evaluation.get(**{"metrics": eval_metrics, "sample_popular": False})
 
