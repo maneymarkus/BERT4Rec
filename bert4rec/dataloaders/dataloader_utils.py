@@ -313,7 +313,8 @@ def make_batches(dataset: tf.data.Dataset,
                  buffer_size: int = None,
                  batch_size: int = 64,
                  squeeze_tensors: bool = False,
-                 reshuffle_each_iteration: bool = False) -> tf.data.Dataset:
+                 reshuffle_each_iteration: bool = False,
+                 seed: int = None) -> tf.data.Dataset:
     """
     Combines consecutive elements of the given dataset into batches. Tensors may be squeezed if wanted,
     to prevent elements of the batched dataset to have a shape of [batch_size, 1, tokens].
@@ -344,7 +345,7 @@ def make_batches(dataset: tf.data.Dataset,
                          f"determined. Please provide a buffer size.")
 
     return dataset \
-        .shuffle(buffer_size, reshuffle_each_iteration=reshuffle_each_iteration) \
+        .shuffle(buffer_size, reshuffle_each_iteration=reshuffle_each_iteration, seed=seed) \
         .batch(batch_size, num_parallel_calls=tf.data.AUTOTUNE) \
         .map(lambda d: squeeze_func(d) if squeeze_tensors else d) \
         .cache() \
