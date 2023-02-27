@@ -1,4 +1,5 @@
 from absl import logging
+import numpy as np
 import random
 import string
 import tensorflow as tf
@@ -71,7 +72,7 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
         self.assertIsInstance(model_inputs, dict)
         self.assertEqual(len(list(model_inputs.values())), 4)
         for key, value in model_inputs.items():
-            self.assertTrue(tf.is_tensor(value))
+            self.assertIsInstance(value, np.ndarray)
             self.assertEqual(len(value), self.max_seq_len)
             self.assertNotIn(self.mask_token_id, value)
             self.assertIn(self.pad_token_id, value)
@@ -102,14 +103,14 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
         }
         self.assertIn(self.mask_token_id, model_inputs_2["input_word_ids"])
         for key, value in sub_dict_1.items():
-            self.assertTrue(tf.is_tensor(value))
+            self.assertIsInstance(value, np.ndarray)
             self.assertEqual(len(value), self.max_seq_len)
             self.assertIn(self.pad_token_id, value)
             self.assertEqual(value[len(sequence)], self.pad_token_id)
             self.assertEqual(value[len(value) - 1], self.pad_token_id)
 
         for key, value in sub_dict_2.items():
-            self.assertTrue(tf.is_tensor(value))
+            self.assertIsInstance(value, np.ndarray)
             self.assertEqual(len(value), self.max_predictions_per_seq)
             self.assertIn(self.pad_token_id, value)
 
@@ -137,14 +138,14 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
         }
         self.assertEqual(model_inputs_3["input_word_ids"][len(sequence) - 1], self.mask_token_id)
         for key, value in sub_dict_1.items():
-            self.assertTrue(tf.is_tensor(value))
+            self.assertIsInstance(value, np.ndarray)
             self.assertEqual(len(value), self.max_seq_len)
             self.assertIn(self.pad_token_id, value)
             self.assertEqual(value[len(sequence)], self.pad_token_id)
             self.assertEqual(value[len(value) - 1], self.pad_token_id)
 
         for key, value in sub_dict_2.items():
-            self.assertTrue(tf.is_tensor(value))
+            self.assertIsInstance(value, np.ndarray)
             self.assertEqual(len(value), self.max_predictions_per_seq)
             self.assertIn(self.pad_token_id, value)
             self.assertNotEqual(value[0], self.pad_token_id)
@@ -172,7 +173,7 @@ class BERT4RecTemporalPreprocessorsTests(tf.test.TestCase):
             ] if k in model_inputs_4
         }
         for key, value in sub_dict_1.items():
-            self.assertTrue(tf.is_tensor(value))
+            self.assertIsInstance(value, np.ndarray)
             self.assertEqual(len(value), self.max_seq_len)
 
     def test_process_dataset(self):

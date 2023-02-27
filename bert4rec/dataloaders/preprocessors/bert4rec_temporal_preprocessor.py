@@ -55,7 +55,7 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
         # initiate return dictionary
         processed_features = dict()
 
-        timestamps = np.cast(timestamps, dtype=np.int64)
+        timestamps = np.array(timestamps).astype(np.int64)
 
         tokens = cls.tokenizer.tokenize(sequence)
 
@@ -71,9 +71,9 @@ class BERT4RecTemporalPreprocessor(BasePreprocessor):
             segments = tokens[start_i:start_i + cls.max_seq_len]
             timestamps = timestamps[start_i:start_i+cls.max_seq_len]
 
-        input_word_ids = np.array(segments, dtype=tf.int64)
+        input_word_ids = np.array(segments, dtype=np.int64)
         # build input mask
-        input_mask = np.ones_like(segments, dtype=tf.int64)
+        input_mask = np.ones_like(segments, dtype=np.int64)
 
         labels = input_word_ids.copy()
 

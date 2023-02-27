@@ -1,4 +1,5 @@
 from absl import logging
+import numpy as np
 import pandas as pd
 import random
 import string
@@ -179,9 +180,8 @@ class DataloaderUtilsTest(tf.test.TestCase):
     def test_masking_task(self):
         vocab_size = 1000
         seq_length = 100
-        values = list(random.randint(0, vocab_size - 1) for _ in range(seq_length))
-        logging.debug(values)
-        original_tensor = tf.constant(values)
+        original_values = np.array([random.randint(0, vocab_size - 1) for _ in range(seq_length)])
+        logging.debug(original_values)
         # max selections per sequence
         msps = 25
         # start token id
@@ -200,7 +200,7 @@ class DataloaderUtilsTest(tf.test.TestCase):
         rtr = 0.1
         masked_token_ids, masked_lm_positions, masked_lm_ids = \
             utils.apply_dynamic_masking_task(
-                sequence_tensor=original_tensor,
+                sequence=original_values,
                 max_selections_per_seq=msps,
                 mask_token_id=mti,
                 special_token_ids=[sti, eti, uti],
@@ -210,14 +210,14 @@ class DataloaderUtilsTest(tf.test.TestCase):
                 random_token_rate=rtr
             )
 
-        len_original_tensor = len(original_tensor.numpy())
-        len_masked_tensor = len(masked_token_ids.numpy())
-        self.assertEqual(len_original_tensor, len_masked_tensor,
-                         f"The length of the masked tensor should be the exact same length as the original tensor "
-                         f"(which is: {len_original_tensor}), but has a length of: "
-                         f"{len_masked_tensor}")
+        len_original_values = len(original_values)
+        len_masked_tensor = len(masked_token_ids)
+        self.assertEqual(len_original_values, len_masked_tensor,
+                         f"The length of the masked values array should be the exact same length as "
+                         f"the original tensor (which is: {len_original_values}), but has a "
+                         f"length of: {len_masked_tensor}")
 
-        number_masked_token_positions = len(masked_lm_positions.numpy())
+        number_masked_token_positions = len(masked_lm_positions)
         self.assertLessEqual(number_masked_token_positions, 25,
                              f"The number of masked tokens should be less than or equal to 25, "
                              f"but is: {number_masked_token_positions}")
@@ -225,28 +225,27 @@ class DataloaderUtilsTest(tf.test.TestCase):
                            f"The number of masked tokens should be greater than 0, "
                            f"but is {number_masked_token_positions}")
 
-        number_masked_tokens = len(masked_lm_ids.numpy())
+        number_masked_tokens = len(masked_lm_ids)
         self.assertEqual(number_masked_tokens, number_masked_token_positions,
                          f"The number of masked token positions ({number_masked_token_positions}) "
                          f"and the number of masked tokens ({number_masked_tokens}) should be equal.")
 
-        masked_tokens = masked_lm_ids.numpy()
-        self.assertTrue(all(x in values for x in masked_tokens),
+        masked_tokens = masked_lm_ids
+        self.assertTrue(all(x in original_values for x in masked_tokens),
                         f"Every token that got masked should appear in the original values list")
 
-        masked_token_positions = masked_lm_positions.numpy()
+        masked_token_positions = masked_lm_positions
         self.assertTrue(all(0 <= x <= seq_length for x in masked_token_positions),
                         f"Each position of every masked token should be greater than or equal to 0 and "
                         f"less than or equal to the sequence length")
 
     def test_mask_last_token_only(self):
         mask_token_id = 1
-        tensor_values = [random.randint(10, 50) for _ in range(random.randint(20, 30))]
-        tensor = tf.constant(tensor_values)
+        values = np.array([random.randint(10, 50) for _ in range(random.randint(20, 30))])
         masked_tensor, masked_positions, masked_tokens = \
-            utils.mask_last_token_only(tensor, mask_token_id)
+            utils.mask_last_token_only(values, mask_token_id)
         last_value = masked_tensor[len(masked_tensor) - 1]
-        self.assertEqual(last_value.numpy(), mask_token_id)
+        self.assertEqual(last_value, mask_token_id)
 
     def test_split_dataset(self):
         ds_size = 5000
