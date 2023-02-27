@@ -183,7 +183,7 @@ def duplicate_dataset(ds: tf.data.Dataset, duplication_factor: int) -> tf.data.D
     return ds
 
 
-def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
+def apply_dynamic_masking_task(sequence: np.ndarray,
                                max_selections_per_seq: int,
                                mask_token_id: int,
                                special_token_ids: list[int],
@@ -192,11 +192,11 @@ def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
                                mask_token_rate: float = 0.8,
                                random_token_rate: float = 0.1,
                                seed: int = None) \
-        -> tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Applies dynamic masking task as described in https://arxiv.org/abs/1810.04805
 
-    :param sequence_tensor: one dimensional tensor containing the (already tokenized) sequence
+    :param sequence: one dimensional tensor containing the (already tokenized) sequence
         on which the mlm should be applied on
     :param max_selections_per_seq: Maximum amount of selections per batch to be masked
     :param special_token_ids: Special tokens that shouldn't be selected as a masking target
@@ -209,8 +209,7 @@ def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
     :param seed: The seed for random operations
     :return: tensor with the mlm applied
     """
-    sequence = sequence_tensor.numpy()
-    dtype = sequence_tensor.dtype
+    dtype = sequence.dtype
 
     # set random seed for reproducibility (default is None -> different seed each call)
     random.seed(seed)
@@ -236,8 +235,8 @@ def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
     pos_indexes = pos_indexes[:num_to_predict]
     pos_indexes.sort()
 
-    masked_lm_ids = []
-    masked_lm_positions = []
+    masked_lm_ids = np.array([], dtype=dtype)
+    masked_lm_positions = np.array([], dtype=dtype)
     masked_token_ids = sequence.copy()
 
     for index in pos_indexes:
@@ -256,22 +255,17 @@ def apply_dynamic_masking_task(sequence_tensor: tf.Tensor,
             replaced_token = mask_token_id
 
         masked_token_ids[index] = replaced_token
-        masked_lm_ids.append(sequence[index])
-        masked_lm_positions.append(index)
-
-    masked_token_ids = tf.constant(masked_token_ids, dtype=dtype)
-    masked_lm_ids = tf.constant(masked_lm_ids, dtype=dtype)
-    masked_lm_positions = tf.constant(masked_lm_positions, dtype=dtype)
+        masked_lm_ids = np.append(masked_lm_ids, sequence[index])
+        masked_lm_positions = np.append(masked_lm_positions, index)
 
     return masked_token_ids, masked_lm_positions, masked_lm_ids
 
 
-def mask_last_token_only(tensor: tf.Tensor, mask_token_id: int):
-    tensor_values = tensor.numpy()
-    masked_lm_ids = tf.constant([tensor_values[-1]], dtype=tf.int64)
-    tensor_values[-1] = mask_token_id
-    masked_token_ids = tf.constant(tensor_values, dtype=tf.int64)
-    masked_lm_positions = tf.constant([(len(tensor_values) - 1)], dtype=tf.int64)
+def mask_last_token_only(sequence: np.ndarray, mask_token_id: int):
+    masked_lm_ids = tf.constant([sequence[-1]], dtype=np.int64)
+    sequence[-1] = mask_token_id
+    masked_token_ids = np.array(sequence, dtype=np.int64)
+    masked_lm_positions = np.array([(len(sequence) - 1)], dtype=np.int64)
     return masked_token_ids, masked_lm_positions, masked_lm_ids
 
 

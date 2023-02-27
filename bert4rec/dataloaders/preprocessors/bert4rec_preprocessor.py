@@ -1,5 +1,5 @@
-import copy
 import functools
+import numpy as np
 import random
 import tensorflow as tf
 
@@ -65,11 +65,11 @@ class BERT4RecPreprocessor(BasePreprocessor):
             start_i = random.randint(0, len(tokens) - cls.max_seq_len)
             segments = tokens[start_i:start_i + cls.max_seq_len]
 
-        input_word_ids = tf.constant(segments, dtype=tf.int64)
+        input_word_ids = np.array(segments, dtype=np.int64)
         # build input mask
-        input_mask = tf.ones_like(segments, dtype=tf.int64)
+        input_mask = np.ones_like(segments, dtype=np.int64)
 
-        labels = copy.copy(input_word_ids)
+        labels = input_word_ids.copy()
         # apply dynamic masking task
         if apply_mlm:
             if not finetuning:
@@ -88,14 +88,14 @@ class BERT4RecPreprocessor(BasePreprocessor):
                 input_word_ids, masked_lm_positions, masked_lm_ids = \
                     dataloader_utils.mask_last_token_only(input_word_ids, cls.mask_token_id)
 
-            masked_lm_weights = tf.ones_like(masked_lm_ids)
+            masked_lm_weights = np.ones_like(masked_lm_ids)
 
             # pad masked_lm inputs
             if masked_lm_ids.shape[0] < cls.max_predictions_per_seq:
-                paddings = tf.constant([[0, cls.max_predictions_per_seq - masked_lm_ids.shape[0]]])
-                masked_lm_ids = tf.pad(masked_lm_ids, paddings, constant_values=cls.pad_token_id)
-                masked_lm_positions = tf.pad(masked_lm_positions, paddings, constant_values=cls.pad_token_id)
-                masked_lm_weights = tf.pad(masked_lm_weights, paddings, constant_values=cls.pad_token_id)
+                paddings = np.array([[0, cls.max_predictions_per_seq - masked_lm_ids.shape[0]]])
+                masked_lm_ids = np.pad(masked_lm_ids, paddings, constant_values=cls.pad_token_id)
+                masked_lm_positions = np.pad(masked_lm_positions, paddings, constant_values=cls.pad_token_id)
+                masked_lm_weights = np.pad(masked_lm_weights, paddings, constant_values=cls.pad_token_id)
 
             processed_features["masked_lm_ids"] = masked_lm_ids
             processed_features["masked_lm_positions"] = masked_lm_positions
@@ -103,10 +103,10 @@ class BERT4RecPreprocessor(BasePreprocessor):
 
         # pad inputs
         if cls.max_seq_len - input_word_ids.shape[0] > 0:
-            paddings = tf.constant([[0, cls.max_seq_len - input_word_ids.shape[0]]])
-            input_word_ids = tf.pad(input_word_ids, paddings, constant_values=cls.pad_token_id)
-            input_mask = tf.pad(input_mask, paddings, constant_values=cls.pad_token_id)
-            labels = tf.pad(labels, paddings, constant_values=cls.pad_token_id)
+            paddings = np.array([[0, cls.max_seq_len - input_word_ids.shape[0]]])
+            input_word_ids = np.pad(input_word_ids, paddings, constant_values=cls.pad_token_id)
+            input_mask = np.pad(input_mask, paddings, constant_values=cls.pad_token_id)
+            labels = np.pad(labels, paddings, constant_values=cls.pad_token_id)
 
         processed_features["labels"] = labels
         processed_features["input_word_ids"] = input_word_ids
@@ -175,7 +175,7 @@ class BERT4RecPreprocessor(BasePreprocessor):
         processed_features = dict()
 
         if apply_mlm:
-            output = tf.py_function(
+            output = tf.numpy_function(
                 cls._call_process_element,
                 [sequence, apply_mlm, finetuning],
                 [tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64]
@@ -184,7 +184,7 @@ class BERT4RecPreprocessor(BasePreprocessor):
             processed_features["masked_lm_positions"] = output[4]
             processed_features["masked_lm_weights"] = output[5]
         else:
-            output = tf.py_function(
+            output = tf.numpy_function(
                 cls._call_process_element,
                 [sequence, apply_mlm, finetuning],
                 [tf.int64, tf.int64, tf.int64]
