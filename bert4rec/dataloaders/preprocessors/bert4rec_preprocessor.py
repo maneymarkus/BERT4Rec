@@ -33,9 +33,10 @@ class BERT4RecPreprocessor(BasePreprocessor):
                        random_token_rate: float = None):
         # the "if" and "or" statements make sure that setting only single values won't reset already
         # other set attributes
-        cls.tokenizer = tokenizer or cls.tokenizer
-        cls.max_seq_len = max_seq_len or cls.max_seq_len
-        cls.max_predictions_per_seq = max_predictions_per_seq or cls.max_predictions_per_seq
+        cls.tokenizer = tokenizer if tokenizer is not None else cls.tokenizer
+        cls.max_seq_len = max_seq_len if max_seq_len is not None else cls.max_seq_len
+        cls.max_predictions_per_seq = max_predictions_per_seq \
+            if max_predictions_per_seq is not None else cls.max_predictions_per_seq
         cls.mask_token_id = mask_token_id if mask_token_id is not None else cls.mask_token_id
         cls.unk_token_id = unk_token_id if unk_token_id is not None else cls.unk_token_id
         cls.pad_token_id = pad_token_id if pad_token_id is not None else cls.pad_token_id
