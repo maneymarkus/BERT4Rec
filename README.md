@@ -12,8 +12,8 @@ This repository is tested on Python 3.10 and TensorFlow 2.10.
 > [https://www.tensorflow.org/install/pip](https://www.tensorflow.org/install/pip)
 
 0. Install [Python](https://www.python.org/about/gettingstarted/). (Version 3.9 - 3.10)
-1. Clone the containing repository (`git clone https://github.com/AdaStruct/Crawlers.git`)
-2. Navigate to this directory (`cd Crawlers/recommender_systems`)
+1. Clone the containing repository (`git clone https://github.com/maneymarkus/BERT4Rec`)
+2. Navigate to this directory (`cd BERT4Rec`)
 3. Usage of pipenv as the virtual environment and dependency manager is recommended.
 Get [Pipenv](https://pypi.org/project/pipenv/)
 4. Install dependencies via `pipenv install`. Add the `--dev` option to also install
